@@ -1,0 +1,458 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Finale di Agility FISC 2026 - Live Scoreboard</title>
+    <style>
+        /* === RE-STYLING GRAFICO === */
+        :root { 
+            --primary: #1a1a1a; /* Grigio scuro/Nero elegante per header e tabelle */
+            --secondary: #198754; 
+            --bg: #f8f9fa; 
+            --text: #212529; 
+            --success: #198754; 
+            --danger: #dc3545; 
+            --warning: #ffc107; 
+        }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: var(--bg); color: var(--text); margin: 0; padding: 0; }
+        
+        /* HEADER */
+        .header { background: var(--primary); color: white; padding: 15px 20px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 4px 15px rgba(0,0,0,0.3); position: sticky; top: 0; z-index: 1000; }
+        .header-left { display: flex; align-items: center; gap: 15px; flex-wrap: wrap;}
+        .header-logos { display: flex; gap: 10px; }
+        .header-logo { height: 45px; border-radius: 4px; background: white; padding: 3px; }
+        .header-title { margin: 0; font-size: 24px; font-weight: 900; letter-spacing: 1px; text-transform: uppercase; }
+        
+        /* BADGE LIVE */
+        #live-badge { background: var(--success); color: white; padding: 8px 18px; border-radius: 20px; font-weight: bold; font-size: 14px; display: flex; align-items: center; gap: 8px; box-shadow: 0 0 12px var(--success); animation: pulse 2s infinite; }
+        @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(25, 135, 84, 0.7); } 70% { box-shadow: 0 0 0 10px rgba(25, 135, 84, 0); } 100% { box-shadow: 0 0 0 0 rgba(25, 135, 84, 0); } }
+        #live-badge.offline { background: var(--danger); box-shadow: none; animation: none; }
+        
+        .container { max-width: 1200px; margin: 0 auto 30px auto; padding: 0 20px; }
+        
+        #welcome-msg { text-align: center; font-weight: bold; color: #495057; font-size: 18px; margin: 25px 0; background: white; padding: 15px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); border-left: 5px solid var(--primary); }
+
+        /* FILTRI */
+        .filters { background: white; padding: 20px; border-radius: 10px; box-shadow: 0 4px 10px rgba(0,0,0,0.08); margin-bottom: 25px; display: flex; gap: 20px; flex-wrap: wrap; border: 1px solid #e9ecef;}
+        .filter-group { flex: 1; min-width: 200px; display: flex; flex-direction: column; gap: 8px; }
+        .filter-group label { font-size: 13px; font-weight: bold; color: #6c757d; text-transform: uppercase; letter-spacing: 0.5px;}
+        select { padding: 12px; font-size: 16px; border: 2px solid #ced4da; border-radius: 8px; font-weight: bold; color: var(--primary); outline: none; cursor: pointer; transition: 0.3s;}
+        select:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(26, 26, 26, 0.1);}
+
+        /* PULSANTI MANCHE (STILE PILLOLA) */
+        .manche-buttons { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 25px; justify-content: center;}
+        .btn-manche { 
+            display: flex; align-items: center; justify-content: center; gap: 10px; 
+            background: white; 
+            border: 2px solid var(--primary); 
+            padding: 12px 25px; 
+            border-radius: 50px; /* Effetto Pillola */
+            font-size: 16px; font-weight: bold; color: var(--primary); 
+            cursor: pointer; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); 
+        }
+        .btn-manche img { height: 26px; border-radius: 50%; } 
+        .btn-manche:hover { background: #e9ecef; transform: translateY(-2px); box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
+        .btn-manche.active { background: var(--primary); color: white; border-color: var(--primary); box-shadow: 0 4px 12px rgba(26,26,26,0.3); transform: translateY(-2px);}
+
+        /* TABELLA */
+        .board-container { background: white; border-radius: 12px; box-shadow: 0 8px 25px rgba(0,0,0,0.08); overflow: hidden; border: 1px solid #e9ecef;}
+        table { width: 100%; border-collapse: collapse; min-width: 800px; }
+        th { background: var(--primary); color: white; padding: 18px 15px; text-align: left; font-size: 14px; text-transform: uppercase; letter-spacing: 1px;}
+        td { padding: 16px 15px; border-bottom: 1px solid #dee2e6; vertical-align: middle; font-size: 16px; }
+        tr:last-child td { border-bottom: none; }
+        tr:hover td { background-color: #f8f9fa; }
+        
+        .rank-badge { width: 34px; height: 34px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 900; background: #e9ecef; color: #495057; font-size: 15px;}
+        .rank-1 { background: #ffd700; color: #000; box-shadow: 0 0 15px rgba(255,215,0,0.6); transform: scale(1.1);}
+        .rank-2 { background: #c0c0c0; color: #000; }
+        .rank-3 { background: #cd7f32; color: #fff; }
+        
+        .badge-wildcard { background: var(--warning); color: #000; font-size: 11px; padding: 4px 8px; border-radius: 6px; font-weight: bold; border: 1px solid #d39e00; margin-left: 8px; vertical-align: middle;}
+        
+        #overlay-offline { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(26,26,26,0.95); color: white; display: none; flex-direction: column; align-items: center; justify-content: center; z-index: 9999; backdrop-filter: blur(5px);}
+        #overlay-offline h2 { font-size: 45px; margin-bottom: 15px; color: var(--danger); letter-spacing: 2px;}
+        #overlay-offline p { font-size: 20px; color: #adb5bd; }
+        
+        /* Skeleton loading animation */
+        .skeleton { background: #e9ecef; border-radius: 6px; height: 24px; margin: 8px 0; animation: shimmer 2s infinite linear; background-image: linear-gradient(90deg, #e9ecef 0px, #f8f9fa 40px, #e9ecef 80px); background-size: 600px; }
+        @keyframes shimmer { 0% { background-position: -100px; } 100% { background-position: 500px; } }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <div class="header-left">
+            <div class="header-logos">
+                <img src="https://lh3.googleusercontent.com/d/1xSYvZbiAhhpNat57RXdc0nE11ocZKXry" class="header-logo" alt="Logo 1">
+                <img src="https://lh3.googleusercontent.com/d/1h0cOsNsO7nV9CA4o2vc1MQSvvlCov0px" class="header-logo" alt="Logo 2">
+                <img src="https://lh3.googleusercontent.com/d/1hr2ORv1F5L0v3bv5dBKRDR0IxIN1V04-" class="header-logo" alt="FISC Logo">
+            </div>
+            <h1 class="header-title" id="main-title">Finale di Agility FISC 2026</h1>
+        </div>
+        <div id="live-badge">
+            <span id="live-dot">●</span> <span id="live-text">CONNESSO</span>
+        </div>
+    </div>
+
+    <div class="container">
+        
+        <p id="welcome-msg">Benvenuti alla Finale! Seleziona una gara per i risultati Live in tempo reale.</p>
+        
+        <div class="filters">
+            <div class="filter-group">
+                <label>Classe</label>
+                <select id="sel-classe" onchange="aggiornaUI()">
+                    <option value="Senior" selected>Senior</option>
+                    <option value="Junior">Junior</option>
+                    <option value="Beginner">Beginner</option>
+                </select>
+            </div>
+            <div class="filter-group">
+                <label>Altezza (Categoria)</label>
+                <select id="sel-altezza" onchange="aggiornaUI()">
+                    <option value="Toy">Toy</option>
+                    <option value="Mini">Mini</option>
+                    <option value="Medium" selected>Medium</option>
+                    <option value="Large">Large</option>
+                    <option value="Maxi">Maxi</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="manche-buttons" id="manche-container">
+            <!-- Popolato via JS -->
+        </div>
+
+        <div class="board-container">
+            <table>
+                <thead id="tab-head">
+                    <tr><th>Rank</th><th>Pett</th><th>Binomio / Club</th><th>Tempo</th><th>Err</th><th>Rif</th><th>Score / Pen</th><th>Qual.</th></tr>
+                </thead>
+                <tbody id="tab-body">
+                    <tr><td colspan="8"><div class="skeleton"></div><div class="skeleton"></div><div class="skeleton"></div></td></tr>
+                </tbody>
+            </table>
+        </div>
+
+    </div>
+
+    <div id="overlay-offline">
+        <h2>📡 LIVE OFFLINE</h2>
+        <p>La trasmissione dei dati è momentaneamente sospesa dalla regia.</p>
+    </div>
+
+<script>
+    const API_URL = "https://script.google.com/macros/s/AKfycbzzp4UI-BFv0nLLfMG63Q4vZsoGPAmkRwia-XJfU-8goSIHTBYdsWuZ6jvmzstoACId/exec";
+    const LOGO_PULSANTI = "https://lh3.googleusercontent.com/d/1hr2ORv1F5L0v3bv5dBKRDR0IxIN1V04-";
+
+    let appData = null;
+    let mancheAttuale = "Agility";
+    
+    // TUTTE LE MANCHE, COMPRESO TRIATHLON
+    const mStandard = ["Agility", "Jumping", "Snooker", "Gambler", "Biathlon B1", "Biathlon B2", "Triathlon T1", "Triathlon T2", "Triathlon T3"];
+    const mBeginner = ["Jumping 1", "Jumping 2"];
+    const aStandard = ["Toy", "Mini", "Medium", "Large", "Maxi"];
+    const aBeginner = ["Toy", "Large"];
+
+    function avviaLive() {
+        richiediDati();
+        setInterval(richiediDati, 10000); // Polling 10 sec
+    }
+
+    function richiediDati() {
+        let script = document.createElement('script');
+        let timestamp = new Date().getTime();
+        script.src = `${API_URL}?azione=ottieni_dati_live&callback=riceviDatiLIVE&t=${timestamp}`;
+        document.body.appendChild(script);
+        setTimeout(() => { document.body.removeChild(script); }, 5000);
+    }
+
+    function riceviDatiLIVE(data) {
+        if(data.error) {
+            mostraOffline();
+            return;
+        }
+        nascondiOffline();
+        appData = data;
+        aggiornaUI();
+    }
+
+    function mostraOffline() {
+        document.getElementById('overlay-offline').style.display = 'flex';
+        let badge = document.getElementById('live-badge');
+        badge.className = 'offline';
+        document.getElementById('live-text').innerText = "OFFLINE";
+    }
+
+    function nascondiOffline() {
+        document.getElementById('overlay-offline').style.display = 'none';
+        let badge = document.getElementById('live-badge');
+        badge.className = '';
+        document.getElementById('live-text').innerText = "LIVE ATTIVA";
+    }
+
+    function aggiornaUI() {
+        if (!appData) return;
+        
+        let manchesRegia = appData.liveManches || ["TUTTE"];
+        
+        // 1. GESTIONE CLASSI BASATA SU REGIA LIVE
+        let selClasse = document.getElementById('sel-classe');
+        let currentCls = selClasse.value;
+        
+        let classiPossibili = ["Senior", "Junior", "Beginner"];
+        let classiAttive = classiPossibili.filter(c => manchesRegia.includes("TUTTE") || manchesRegia.includes(c));
+        
+        if (classiAttive.length === 0) {
+            document.getElementById('manche-container').innerHTML = "<div style='color:var(--danger); font-weight:bold; font-size:18px;'>Nessuna gara trasmessa dalla regia.</div>";
+            document.getElementById('tab-body').innerHTML = `<tr><td colspan="8" align="center" style="padding: 30px; font-weight:bold; color:#6c757d;">In attesa di dati dalla regia...</td></tr>`;
+            selClasse.innerHTML = "<option value=''>-</option>";
+            return;
+        }
+        
+        selClasse.innerHTML = "";
+        classiAttive.forEach(c => {
+            selClasse.innerHTML += `<option value="${c}" ${c === currentCls ? 'selected' : ''}>${c}</option>`;
+        });
+        
+        // Se la classe attuale è stata spenta in regia, passa alla prima attiva
+        if (!classiAttive.includes(currentCls)) {
+            selClasse.value = classiAttive[0];
+        }
+        let cls = selClasse.value;
+        
+        // 2. GESTIONE ALTEZZE
+        let altSelect = document.getElementById('sel-altezza');
+        let arrAltValide = (cls === 'Beginner') ? aBeginner : aStandard;
+        let altSelezionata = altSelect.value;
+        
+        if (!arrAltValide.includes(altSelezionata)) {
+            altSelect.innerHTML = "";
+            arrAltValide.forEach(a => altSelect.innerHTML += `<option value="${a}">${a}</option>`);
+            altSelezionata = arrAltValide[0];
+        } else {
+            altSelect.innerHTML = "";
+            arrAltValide.forEach(a => altSelect.innerHTML += `<option value="${a}" ${a===altSelezionata?'selected':''}>${a}</option>`);
+        }
+
+        // 3. GESTIONE MANCHE
+        let manchsClasse = (cls === 'Beginner') ? mBeginner : mStandard;
+        let manchesAttive = manchsClasse.filter(m => manchesRegia.includes("TUTTE") || manchesRegia.includes(m));
+        
+        if (!manchesAttive.includes(mancheAttuale) && manchesAttive.length > 0) {
+            mancheAttuale = manchesAttive[0];
+        }
+
+        let containerBtn = document.getElementById('manche-container');
+        containerBtn.innerHTML = "";
+        
+        if (manchesAttive.length === 0) {
+            containerBtn.innerHTML = "<div style='color:var(--danger); font-weight:bold;'>Nessuna manche abilitata per questa classe.</div>";
+            document.getElementById('tab-body').innerHTML = `<tr><td colspan="8" align="center">In attesa di dati...</td></tr>`;
+            return;
+        }
+
+        manchesAttive.forEach(m => {
+            let activeCls = (m === mancheAttuale) ? "active" : "";
+            containerBtn.innerHTML += `
+                <button class="btn-manche ${activeCls}" onclick="cambiaManche('${m}')">
+                    <img src="${LOGO_PULSANTI}" alt="FISC"> ${m}
+                </button>
+            `;
+        });
+
+        disegnaClassifica(mancheAttuale, cls, altSelezionata);
+    }
+
+    function cambiaManche(nome) {
+        mancheAttuale = nome;
+        aggiornaUI();
+    }
+
+    function getQualificaTesto(penalita, esito) {
+        if (['E','A','DIS','ABS'].includes(esito)) return { testo: esito, colore: "#ffffff", bg: "#dc3545" };
+        if (penalita === 0) return { testo: "Ecc. Netto", colore: "#ffffff", bg: "#198754" }; 
+        if (penalita > 0 && penalita <= 5.99) return { testo: "Eccellente", colore: "#ffffff", bg: "#20c997" };
+        if (penalita >= 6.00 && penalita <= 15.99) return { testo: "Molto Buono", colore: "#000000", bg: "#ffc107" }; 
+        if (penalita >= 16.00 && penalita <= 25.99) return { testo: "Buono", colore: "#ffffff", bg: "#fd7e14" };
+        return { testo: "N.C.", colore: "#ffffff", bg: "#6c757d" }; 
+    }
+
+    function formattaTempo(val) {
+        if (!val) return ""; 
+        let v = val.toString().trim().replace('.', ',');
+        if (!v.includes(',')) { if (v.length <= 2) return v + ",00"; if (v.length > 2) return v.slice(0, -2) + "," + v.slice(-2); } 
+        else { let parts = v.split(','); if (parts[1] && parts[1].length === 1) v += "0"; }
+        return v;
+    }
+
+    function disegnaClassifica(manche, cls, alt) {
+        const isGame = (manche === "Snooker" || manche === "Gambler");
+        
+        let head = document.getElementById('tab-head');
+        if (isGame) {
+            head.innerHTML = `<tr><th>Rank</th><th>Pett</th><th>Binomio / Club</th><th>Tempo</th><th>Score Punti</th><th>Esito</th></tr>`;
+        } else {
+            head.innerHTML = `<tr><th>Rank</th><th>Pett</th><th>Binomio / Club</th><th>Tempo</th><th>Err</th><th>Rif</th><th>Pen. Totali</th><th>Qual.</th></tr>`;
+        }
+
+        let atletiGara = [];
+
+        // SEZIONE TRIATHLON: Filtra per Jump-Up e recupera il nome del Team
+        if (manche.startsWith("Triathlon") && appData.squadre) {
+            appData.squadre.forEach(sq => {
+                sq.membri.forEach(m => {
+                    let c = appData.iscritti.find(x => String(x.pett) === String(m.pett));
+                    if (c) {
+                        let jumpEffettivo = String(m.jumpUp || c.cat);
+                        // Filtro: deve coincidere l'altezza del Jump-Up e la classe
+                        if (jumpEffettivo === String(alt) && String(c.classe) === String(cls)) {
+                            let clone = Object.assign({}, c);
+                            clone.teamName = sq.nome;
+                            atletiGara.push(clone);
+                        }
+                    }
+                });
+            });
+        } 
+        // GARE STANDARD
+        else {
+            atletiGara = appData.iscritti.filter(b => {
+                let matchesAlt = String(b.cat).trim() === String(alt).trim();
+                let matchesClass = String(b.classe).trim() === String(cls).trim();
+                
+                let isWildcard = false;
+                if (cls === "Senior" && String(b.classe).trim() === "Junior") {
+                    if (appData.wildcards && appData.wildcards.includes(String(b.pett))) isWildcard = true;
+                }
+                
+                b.isWildcard = isWildcard; 
+                return matchesAlt && (matchesClass || isWildcard);
+            });
+        }
+
+        let tbody = document.getElementById('tab-body');
+        if (atletiGara.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="8" align="center" style="padding: 30px; font-weight:bold; color:#6c757d;">Nessun atleta in questa categoria.</td></tr>`;
+            return;
+        }
+
+        let p_dati = (appData.percorsi[manche] && appData.percorsi[manche][cls] && appData.percorsi[manche][cls][alt]) ? appData.percorsi[manche][cls][alt] : {};
+        let tpsC = parseFloat((p_dati.tps || "45").replace(',', '.')) || 45.00;
+
+        let listaElaborata = [];
+        
+        atletiGara.forEach(c => {
+            let d = appData.risultati[manche] && appData.risultati[manche][c.pett] ? appData.risultati[manche][c.pett] : {tempo:"", esito:""};
+            let floatT = parseFloat(formattaTempo(d.tempo).replace(',','.')) || 0;
+            let hasT = (floatT > 0);
+            let isOut = ['E','A','DIS','ABS'].includes(d.esito);
+            let ordStart = (c.ordini && c.ordini[manche]) ? c.ordini[manche] : 999;
+            
+            let scoreF = 0; let testoRisultato = "-";
+            
+            if (isOut) {
+                testoRisultato = d.esito;
+            } else if (hasT) {
+                if (isGame) {
+                    scoreF = parseInt(d.punti)||0;
+                    testoRisultato = scoreF.toString();
+                } else {
+                    let timePen = floatT > tpsC ? (floatT - tpsC) : 0;
+                    scoreF = ((parseInt(d.err)||0)*5) + ((parseInt(d.rif)||0)*5) + timePen;
+                    testoRisultato = scoreF.toFixed(3).replace('.', ',');
+                }
+            }
+
+            listaElaborata.push({
+                caneOrig: c, datiCorsa: d,
+                hasT: hasT, isOut: isOut, t: floatT,
+                scoreF: scoreF, textRisultato: testoRisultato,
+                ordStart: ordStart
+            });
+        });
+
+        listaElaborata.sort((a,b) => {
+            if(a.isOut && !b.isOut) return 1;
+            if(!a.isOut && b.isOut) return -1;
+            
+            if(!a.hasT && b.hasT) return 1;
+            if(a.hasT && !b.hasT) return -1;
+            if(!a.hasT && !b.hasT) return a.ordStart - b.ordStart; 
+            
+            if (isGame) {
+                if (b.scoreF !== a.scoreF) return b.scoreF - a.scoreF;
+                return a.t - b.t;
+            } else {
+                if (Math.abs(a.scoreF - b.scoreF) > 0.001) return a.scoreF - b.scoreF;
+                return a.t - b.t;
+            }
+        });
+
+        tbody.innerHTML = "";
+        listaElaborata.forEach((item, index) => {
+            let c = item.caneOrig;
+            let d = item.datiCorsa;
+            
+            let rankText = "-"; let rankClass = "rank-badge";
+            if (item.hasT && !item.isOut) {
+                let r = index + 1;
+                rankText = r;
+                if (r === 1) rankClass += " rank-1";
+                if (r === 2) rankClass += " rank-2";
+                if (r === 3) rankClass += " rank-3";
+            } else if (!item.hasT && !item.isOut) {
+                rankText = `<span style="font-size:11px; font-weight:normal;">Ord.${item.ordStart}</span>`;
+            }
+
+            let strWild = c.isWildcard ? `<span class="badge-wildcard">J-FINALISSIMA</span>` : "";
+            let strTeam = c.teamName ? `<br><span style="color:var(--secondary); font-weight:bold; font-size:14px;">🏁 Team: ${c.teamName}</span>` : "";
+            
+            let nomeCaneHtml = `<div style="font-weight:900; font-size:17px; color:var(--primary);">${c.cane} ${strWild}</div><div style="font-size:13px; color:#6c757d; margin-top:2px;">${c.conduttore} - ${c.club}${strTeam}</div>`;
+            
+            let bgRow = item.isOut ? "background-color: #fff5f5;" : (item.hasT ? "background-color: #f8fff9;" : "");
+            let tempoFormattato = (item.hasT && !item.isOut) ? item.t.toFixed(2).replace('.',',') : "-";
+            
+            let tr = `<tr style="${bgRow}">
+                <td><div class="${rankClass}">${rankText}</div></td>
+                <td><b style="font-size:18px;">${c.pett}</b></td>
+                <td>${nomeCaneHtml}</td>
+                <td><b style="font-size:17px;">${tempoFormattato}</b></td>
+            `;
+
+            if (isGame) {
+                let ptsUI = (item.hasT && !item.isOut) ? item.textRisultato : "-";
+                let esitoUI = item.isOut ? `<b style="color:var(--danger)">${item.textRisultato}</b>` : "-";
+                tr += `
+                    <td style="font-size:20px; font-weight:900; color:var(--primary);">${ptsUI}</td>
+                    <td>${esitoUI}</td>
+                `;
+            } else {
+                let err = (item.hasT && !item.isOut) ? (d.err || "0") : "-";
+                let rif = (item.hasT && !item.isOut) ? (d.rif || "0") : "-";
+                let scoreColor = item.isOut ? "var(--danger)" : "var(--primary)";
+                
+                let qualHtml = `<span style="color:#6c757d; font-weight: bold;">-</span>`;
+                if (item.hasT || item.isOut) {
+                    let q = getQualificaTesto(item.scoreF, item.isOut ? item.textRisultato : "");
+                    qualHtml = `<span style="background:${q.bg}; color:${q.colore}; padding: 5px 10px; border-radius: 6px; font-weight: bold; font-size:12px; box-shadow:0 2px 4px rgba(0,0,0,0.1);">${q.testo}</span>`;
+                }
+
+                tr += `
+                    <td style="font-size:16px; font-weight:bold;">${err}</td>
+                    <td style="font-size:16px; font-weight:bold;">${rif}</td>
+                    <td style="font-size:20px; font-weight:900; color:${scoreColor};">${item.textRisultato}</td>
+                    <td>${qualHtml}</td>
+                `;
+            }
+            
+            tr += `</tr>`;
+            tbody.innerHTML += tr;
+        });
+    }
+
+    window.onload = avviaLive;
+</script>
+</body>
+</html>

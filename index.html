@@ -171,27 +171,52 @@
     const mStandard = ["Agility", "Jumping", "Snooker", "Gambler", "Biathlon B1", "Biathlon B2", "Triathlon T1", "Triathlon T2", "Triathlon T3"];
     const mBeginner = ["Jumping 1", "Jumping 2"];
     const mParagility = ["Agility Open Paragility"];
-    const aStandard = ["Toy", "Mini", "Medium", "Large", "Maxi", "Vet Toy/Mini", "Vet Medium", "Vet Large/Maxi"];
+    const aStandard = ["Toy", "Mini", "Medium", "Large", "Maxi"];
+    const aParaAltezze = ["Toy", "Mini", "Medium", "Large", "Maxi", "Vet Toy/Mini", "Vet Medium", "Vet Large/Maxi"];
     const aBeginner = ["Toy", "Large"];
     const aParagility = ["Gruppo 1", "Gruppo 2", "Gruppo 3", "Gruppo 4", "Gruppo 5", "Gruppo 6", "Gruppo 7", "Gruppo 8"];
 
-    function getCategoriaEffettiva(b) {
+    function getCategoriaEffettiva(b, classeRichiesta = "Senior") {
         if (!b) return "Large";
         let c = (b.cat || "Large").toString().trim();
-        if (b.isVet) {
-            if (c === "Toy" || c === "Mini" || c === "Vet Toy/Mini") return "Vet Toy/Mini";
-            if (c === "Medium" || c === "Vet Medium") return "Vet Medium";
-            if (c === "Large" || c === "Maxi" || c === "Vet Large/Maxi") return "Vet Large/Maxi";
+        if (classeRichiesta === "Paragility") {
+            if (b.isVet) {
+                if (c === "Toy" || c === "Mini" || c === "Vet Toy/Mini") return "Vet Toy/Mini";
+                if (c === "Medium" || c === "Vet Medium") return "Vet Medium";
+                if (c === "Large" || c === "Maxi" || c === "Vet Large/Maxi") return "Vet Large/Maxi";
+            }
+            return c;
+        } else if (classeRichiesta === "Beginner") {
+            if (b.isVet) return "Toy";
+            if (c === "Toy" || c === "Mini" || c === "Medium") return "Toy";
+            return "Large";
+        } else {
+            if (b.isVet) {
+                if (c === "Toy" || c === "Mini" || c === "Vet Toy/Mini") return "Toy";
+                if (c === "Medium" || c === "Vet Medium") return "Mini";
+                if (c === "Large" || c === "Maxi" || c === "Vet Large/Maxi") return "Medium";
+            }
+            return c;
         }
-        return c;
     }
 
-    function getAltezzaSalto(cat, isVet) {
+    function getAltezzaSalto(cat, isVet, isParaGara = false) {
         let c = (cat || "").toLowerCase();
-        if (isVet || c.startsWith("vet")) {
+        if (c.startsWith("vet")) {
             if (c.includes("toy") || c.includes("mini")) return "20";
             if (c.includes("medium")) return "30";
             if (c.includes("large") || c.includes("maxi")) return "40";
+        }
+        if (isVet) {
+            if (isParaGara) {
+                if (c === "toy" || c === "mini") return "20";
+                if (c === "medium") return "30";
+                if (c === "large" || c === "maxi") return "40";
+            } else {
+                if (c === "toy" || c === "mini") return "25";
+                if (c === "medium") return "30";
+                if (c === "large" || c === "maxi") return "40";
+            }
         } else {
             if (c === "toy") return "25";
             if (c === "mini") return "30";
@@ -305,7 +330,7 @@
 
         // 2. GESTIONE ALTEZZE (5 Canoniche + 3 Veterani per Senior/Junior/Paragility)
         let altSelect = document.getElementById('sel-altezza');
-        let arrAltValide = isBeg ? aBeginner : aStandard;
+        let arrAltValide = isPara ? aParaAltezze : (isBeg ? aBeginner : aStandard);
         let altSelezionata = altSelect.value;
         
         if (!arrAltValide.includes(altSelezionata)) {
@@ -386,7 +411,7 @@
         let badgeVet = c.isVet ? ` <span class="badge-wildcard" style="background:#17a2b8; color:white;">VET</span>` : "";
         let badgePara = c.isPara ? ` <span class="badge-wildcard" style="background:#6f42c1; color:white;">${c.gruppo||'Gruppo 1'}</span>` : "";
         
-        let saltoStr = getAltezzaSalto(c.cat, c.isVet);
+        let saltoStr = getAltezzaSalto(c.cat, c.isVet, cls === 'Paragility');
         let strTeam = c.teamName ? `<br><span style="color:var(--secondary); font-weight:bold; font-size:14px;">🏁 Team: ${c.teamName}</span>` : "";
         let hSaltoTag = `<span style="color:var(--danger); font-weight:bold;">Salto: ${saltoStr}cm</span> | `;
         
@@ -451,7 +476,7 @@
                 sq.membri.forEach(m => {
                     let c = appData.iscritti.find(x => String(x.pett) === String(m.pett));
                     if (c) {
-                        let jumpEffettivo = String(m.jumpUp || getCategoriaEffettiva(c));
+                        let jumpEffettivo = String(m.jumpUp || getCategoriaEffettiva(c, cls));
                         if (jumpEffettivo === String(alt) && String(c.classe) === String(cls)) {
                             let clone = Object.assign({}, c);
                             clone.teamName = sq.nome;
@@ -464,7 +489,7 @@
         // GARE STANDARD E PARAGILITY
         else {
             atletiGara = appData.iscritti.filter(b => {
-                let catEff = getCategoriaEffettiva(b);
+                let catEff = getCategoriaEffettiva(b, cls);
                 let matchesAlt = String(catEff).trim() === String(alt).trim();
                 
                 if (cls === "Paragility") {

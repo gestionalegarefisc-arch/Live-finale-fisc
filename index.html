@@ -7,7 +7,7 @@
     <style>
         /* === RE-STYLING GRAFICO === */
         :root { 
-            --primary: #1a1a1a; /* Grigio scuro/Nero elegante per header e tabelle */
+            --primary: #1a1a1a;
             --secondary: #198754; 
             --bg: #f8f9fa; 
             --text: #212529; 
@@ -47,7 +47,7 @@
             background: white; 
             border: 2px solid var(--primary); 
             padding: 12px 25px; 
-            border-radius: 50px; /* Effetto Pillola */
+            border-radius: 50px;
             font-size: 16px; font-weight: bold; color: var(--primary); 
             cursor: pointer; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); 
         }
@@ -74,7 +74,6 @@
         #overlay-offline h2 { font-size: 45px; margin-bottom: 15px; color: var(--danger); letter-spacing: 2px;}
         #overlay-offline p { font-size: 20px; color: #adb5bd; }
         
-        /* Skeleton loading animation */
         .skeleton { background: #e9ecef; border-radius: 6px; height: 24px; margin: 8px 0; animation: shimmer 2s infinite linear; background-image: linear-gradient(90deg, #e9ecef 0px, #f8f9fa 40px, #e9ecef 80px); background-size: 600px; }
         @keyframes shimmer { 0% { background-position: -100px; } 100% { background-position: 500px; } }
     </style>
@@ -110,13 +109,30 @@
                 </select>
             </div>
             <div class="filter-group">
-                <label>Altezza (Categoria)</label>
+                <label id="lbl-altezza">Altezza (Categoria)</label>
                 <select id="sel-altezza" onchange="aggiornaUI()">
                     <option value="Toy">Toy</option>
                     <option value="Mini">Mini</option>
                     <option value="Medium" selected>Medium</option>
                     <option value="Large">Large</option>
                     <option value="Maxi">Maxi</option>
+                    <option value="Vet Toy/Mini">Vet Toy/Mini (20cm)</option>
+                    <option value="Vet Medium">Vet Medium (30cm)</option>
+                    <option value="Vet Large/Maxi">Vet Large/Maxi (40cm)</option>
+                </select>
+            </div>
+            <div class="filter-group" id="box-sel-gruppo" style="display:none;">
+                <label>Gruppo Paragility</label>
+                <select id="sel-gruppo" onchange="aggiornaUI()">
+                    <option value="TUTTI">-- TUTTI I GRUPPI --</option>
+                    <option value="Gruppo 1">Gruppo 1</option>
+                    <option value="Gruppo 2">Gruppo 2</option>
+                    <option value="Gruppo 3">Gruppo 3</option>
+                    <option value="Gruppo 4">Gruppo 4</option>
+                    <option value="Gruppo 5">Gruppo 5</option>
+                    <option value="Gruppo 6">Gruppo 6</option>
+                    <option value="Gruppo 7">Gruppo 7</option>
+                    <option value="Gruppo 8">Gruppo 8</option>
                 </select>
             </div>
         </div>
@@ -149,21 +165,33 @@
 
     let appData = null;
     let mancheAttuale = "Agility";
+    let inRichiesta = false;
     
-    // TUTTE LE MANCHE, COMPRESO TRIATHLON
+    // TUTTE LE MANCHE E ALTEZZE (5 CANONICHE + 3 VETERANI)
     const mStandard = ["Agility", "Jumping", "Snooker", "Gambler", "Biathlon B1", "Biathlon B2", "Triathlon T1", "Triathlon T2", "Triathlon T3"];
     const mBeginner = ["Jumping 1", "Jumping 2"];
     const mParagility = ["Agility Open Paragility"];
-    const aStandard = ["Toy", "Mini", "Medium", "Large", "Maxi"];
+    const aStandard = ["Toy", "Mini", "Medium", "Large", "Maxi", "Vet Toy/Mini", "Vet Medium", "Vet Large/Maxi"];
     const aBeginner = ["Toy", "Large"];
     const aParagility = ["Gruppo 1", "Gruppo 2", "Gruppo 3", "Gruppo 4", "Gruppo 5", "Gruppo 6", "Gruppo 7", "Gruppo 8"];
 
+    function getCategoriaEffettiva(b) {
+        if (!b) return "Large";
+        let c = (b.cat || "Large").toString().trim();
+        if (b.isVet) {
+            if (c === "Toy" || c === "Mini" || c === "Vet Toy/Mini") return "Vet Toy/Mini";
+            if (c === "Medium" || c === "Vet Medium") return "Vet Medium";
+            if (c === "Large" || c === "Maxi" || c === "Vet Large/Maxi") return "Vet Large/Maxi";
+        }
+        return c;
+    }
+
     function getAltezzaSalto(cat, isVet) {
         let c = (cat || "").toLowerCase();
-        if (isVet) {
-            if (c === "toy" || c === "mini") return "20";
-            if (c === "medium") return "30";
-            if (c === "large" || c === "maxi") return "40";
+        if (isVet || c.startsWith("vet")) {
+            if (c.includes("toy") || c.includes("mini")) return "20";
+            if (c.includes("medium")) return "30";
+            if (c.includes("large") || c.includes("maxi")) return "40";
         } else {
             if (c === "toy") return "25";
             if (c === "mini") return "30";
@@ -176,19 +204,49 @@
 
     function avviaLive() {
         richiediDati();
-        setInterval(richiediDati, 10000); // Polling 10 sec
+        setInterval(richiediDati, 6000); // Polling rapido 6 sec
     }
 
     function richiediDati() {
+        if (inRichiesta) return;
+        inRichiesta = true;
+
+        // Se aperto direttamente dentro Google Apps Script, usa il canale diretto istantaneo
+        if (typeof google !== 'undefined' && google.script && google.script.run) {
+            google.script.run
+                .withSuccessHandler(function(res) {
+                    inRichiesta = false;
+                    if (res && res.liveStatus === false) {
+                        mostraOffline();
+                    } else {
+                        riceviDatiLIVE(res);
+                    }
+                })
+                .withFailureHandler(function() {
+                    inRichiesta = false;
+                })
+                .getIscrittiTemporanei();
+            return;
+        }
+
+        // Altrimenti usa JSONP verso API_URL con anti-cache e timeout di 15s
         let script = document.createElement('script');
-        let timestamp = new Date().getTime();
+        let timestamp = new Date().getTime() + "_" + Math.floor(Math.random() * 100000);
         script.src = `${API_URL}?azione=ottieni_dati_live&callback=riceviDatiLIVE&t=${timestamp}`;
+        
+        let cleanup = function() {
+            inRichiesta = false;
+            if (script.parentNode) script.parentNode.removeChild(script);
+        };
+        script.onload = cleanup;
+        script.onerror = cleanup;
         document.body.appendChild(script);
-        setTimeout(() => { document.body.removeChild(script); }, 5000);
+        setTimeout(cleanup, 15000);
     }
 
     function riceviDatiLIVE(data) {
-        if(data.error) {
+        inRichiesta = false;
+        if(!data || data.error) {
             mostraOffline();
             return;
         }
@@ -235,7 +293,6 @@
             selClasse.innerHTML += `<option value="${c}" ${c === currentCls ? 'selected' : ''}>${c}</option>`;
         });
         
-        // Se la classe attuale è stata spenta in regia, passa alla prima attiva
         if (!classiAttive.includes(currentCls)) {
             selClasse.value = classiAttive[0];
         }
@@ -243,9 +300,12 @@
         let isPara = (cls === 'Paragility');
         let isBeg = (cls === 'Beginner');
         
-        // 2. GESTIONE ALTEZZE (O GRUPPI PER PARAGILITY)
+        // Mostra/Nascondi filtro Gruppo Paragility
+        document.getElementById('box-sel-gruppo').style.display = isPara ? 'flex' : 'none';
+
+        // 2. GESTIONE ALTEZZE (5 Canoniche + 3 Veterani per Senior/Junior/Paragility)
         let altSelect = document.getElementById('sel-altezza');
-        let arrAltValide = isPara ? aParagility : (isBeg ? aBeginner : aStandard);
+        let arrAltValide = isBeg ? aBeginner : aStandard;
         let altSelezionata = altSelect.value;
         
         if (!arrAltValide.includes(altSelezionata)) {
@@ -256,8 +316,6 @@
             altSelect.innerHTML = "";
             arrAltValide.forEach(a => altSelect.innerHTML += `<option value="${a}" ${a===altSelezionata?'selected':''}>${a}</option>`);
         }
-        
-        document.querySelector('.filter-group:nth-child(2) label').innerText = isPara ? "Gruppo (Disabilità)" : "Altezza (Categoria)";
 
         // 3. GESTIONE MANCHE
         let manchsClasse = isPara ? mParagility : (isBeg ? mBeginner : mStandard);
@@ -310,8 +368,73 @@
         return v;
     }
 
+    function creaRigaTabellaHTML(item, rankNum, isGame, cls) {
+        let c = item.caneOrig;
+        let d = item.datiCorsa;
+        
+        let rankText = "-"; let rankClass = "rank-badge";
+        if (item.hasT && !item.isOut) {
+            rankText = rankNum;
+            if (rankNum === 1) rankClass += " rank-1";
+            if (rankNum === 2) rankClass += " rank-2";
+            if (rankNum === 3) rankClass += " rank-3";
+        } else if (!item.hasT && !item.isOut) {
+            rankText = `<span style="font-size:11px; font-weight:normal;">Ord.${item.ordStart}</span>`;
+        }
+
+        let strWild = c.isWildcard ? `<span class="badge-wildcard">J-FINALISSIMA</span>` : "";
+        let badgeVet = c.isVet ? ` <span class="badge-wildcard" style="background:#17a2b8; color:white;">VET</span>` : "";
+        let badgePara = c.isPara ? ` <span class="badge-wildcard" style="background:#6f42c1; color:white;">${c.gruppo||'Gruppo 1'}</span>` : "";
+        
+        let saltoStr = getAltezzaSalto(c.cat, c.isVet);
+        let strTeam = c.teamName ? `<br><span style="color:var(--secondary); font-weight:bold; font-size:14px;">🏁 Team: ${c.teamName}</span>` : "";
+        let hSaltoTag = `<span style="color:var(--danger); font-weight:bold;">Salto: ${saltoStr}cm</span> | `;
+        
+        let nomeCaneHtml = `<div style="font-weight:900; font-size:17px; color:var(--primary);">${c.cane} ${strWild}${badgePara}${badgeVet}</div><div style="font-size:13px; color:#6c757d; margin-top:2px;">${hSaltoTag}${c.conduttore} - ${c.club}${strTeam}</div>`;
+        
+        let bgRow = item.isOut ? "background-color: #fff5f5;" : (item.hasT ? "background-color: #f8fff9;" : "");
+        let tempoFormattato = (item.hasT && !item.isOut) ? item.t.toFixed(2).replace('.',',') : "-";
+        
+        let tr = `<tr style="${bgRow}">
+            <td><div class="${rankClass}">${rankText}</div></td>
+            <td><b style="font-size:18px;">${c.pett}</b></td>
+            <td>${nomeCaneHtml}</td>
+            <td><b style="font-size:17px;">${tempoFormattato}</b></td>
+        `;
+
+        if (isGame) {
+            let ptsUI = (item.hasT && !item.isOut) ? item.textRisultato : "-";
+            let esitoUI = item.isOut ? `<b style="color:var(--danger)">${item.textRisultato}</b>` : "-";
+            tr += `
+                <td style="font-size:20px; font-weight:900; color:var(--primary);">${ptsUI}</td>
+                <td>${esitoUI}</td>
+            `;
+        } else {
+            let err = (item.hasT && !item.isOut) ? (d.err || "0") : "-";
+            let rif = (item.hasT && !item.isOut) ? (d.rif || "0") : "-";
+            let scoreColor = item.isOut ? "var(--danger)" : "var(--primary)";
+            
+            let qualHtml = `<span style="color:#6c757d; font-weight: bold;">-</span>`;
+            if (item.hasT || item.isOut) {
+                let q = getQualificaTesto(item.scoreF, item.isOut ? item.textRisultato : "");
+                qualHtml = `<span style="background:${q.bg}; color:${q.colore}; padding: 5px 10px; border-radius: 6px; font-weight: bold; font-size:12px; box-shadow:0 2px 4px rgba(0,0,0,0.1);">${q.testo}</span>`;
+            }
+
+            tr += `
+                <td style="font-size:16px; font-weight:bold;">${err}</td>
+                <td style="font-size:16px; font-weight:bold;">${rif}</td>
+                <td style="font-size:20px; font-weight:900; color:${scoreColor};">${item.textRisultato}</td>
+                <td>${qualHtml}</td>
+            `;
+        }
+        
+        tr += `</tr>`;
+        return tr;
+    }
+
     function disegnaClassifica(manche, cls, alt) {
         const isGame = (manche === "Snooker" || manche === "Gambler");
+        let grpFiltro = (cls === "Paragility" && document.getElementById('sel-gruppo')) ? document.getElementById('sel-gruppo').value : "TUTTI";
         
         let head = document.getElementById('tab-head');
         if (isGame) {
@@ -322,14 +445,13 @@
 
         let atletiGara = [];
 
-        // SEZIONE TRIATHLON: Filtra per Jump-Up e recupera il nome del Team
+        // SEZIONE TRIATHLON
         if (manche.startsWith("Triathlon") && appData.squadre) {
             appData.squadre.forEach(sq => {
                 sq.membri.forEach(m => {
                     let c = appData.iscritti.find(x => String(x.pett) === String(m.pett));
                     if (c) {
-                        let jumpEffettivo = String(m.jumpUp || c.cat);
-                        // Filtro: deve coincidere l'altezza del Jump-Up e la classe
+                        let jumpEffettivo = String(m.jumpUp || getCategoriaEffettiva(c));
                         if (jumpEffettivo === String(alt) && String(c.classe) === String(cls)) {
                             let clone = Object.assign({}, c);
                             clone.teamName = sq.nome;
@@ -339,16 +461,18 @@
                 });
             });
         } 
-        // GARE STANDARD
+        // GARE STANDARD E PARAGILITY
         else {
             atletiGara = appData.iscritti.filter(b => {
+                let catEff = getCategoriaEffettiva(b);
+                let matchesAlt = String(catEff).trim() === String(alt).trim();
+                
                 if (cls === "Paragility") {
-                    return b.isPara && String(b.gruppo).trim() === String(alt).trim();
+                    let matchGrp = (grpFiltro === "TUTTI") ? true : (String(b.gruppo || "Gruppo 1").trim() === String(grpFiltro).trim());
+                    return !!b.isPara && matchesAlt && matchGrp;
                 }
                 
-                let matchesAlt = String(b.cat).trim() === String(alt).trim();
                 let matchesClass = String(b.classe).trim() === String(cls).trim();
-                
                 let isWildcard = false;
                 if (cls === "Senior" && String(b.classe).trim() === "Junior") {
                     if (appData.wildcards && appData.wildcards.includes(String(b.pett))) isWildcard = true;
@@ -394,20 +518,19 @@
 
             listaElaborata.push({
                 caneOrig: c, datiCorsa: d,
+                gruppo: c.gruppo || "Gruppo 1",
                 hasT: hasT, isOut: isOut, t: floatT,
                 scoreF: scoreF, textRisultato: testoRisultato,
                 ordStart: ordStart
             });
         });
 
-        listaElaborata.sort((a,b) => {
+        let sortFn = (a,b) => {
             if(a.isOut && !b.isOut) return 1;
             if(!a.isOut && b.isOut) return -1;
-            
             if(!a.hasT && b.hasT) return 1;
             if(a.hasT && !b.hasT) return -1;
             if(!a.hasT && !b.hasT) return a.ordStart - b.ordStart; 
-            
             if (isGame) {
                 if (b.scoreF !== a.scoreF) return b.scoreF - a.scoreF;
                 return a.t - b.t;
@@ -415,74 +538,39 @@
                 if (Math.abs(a.scoreF - b.scoreF) > 0.001) return a.scoreF - b.scoreF;
                 return a.t - b.t;
             }
-        });
+        };
 
         tbody.innerHTML = "";
-        listaElaborata.forEach((item, index) => {
-            let c = item.caneOrig;
-            let d = item.datiCorsa;
-            
-            let rankText = "-"; let rankClass = "rank-badge";
-            if (item.hasT && !item.isOut) {
-                let r = index + 1;
-                rankText = r;
-                if (r === 1) rankClass += " rank-1";
-                if (r === 2) rankClass += " rank-2";
-                if (r === 3) rankClass += " rank-3";
-            } else if (!item.hasT && !item.isOut) {
-                rankText = `<span style="font-size:11px; font-weight:normal;">Ord.${item.ordStart}</span>`;
-            }
 
-            let strWild = c.isWildcard ? `<span class="badge-wildcard">J-FINALISSIMA</span>` : "";
-            let badgeVet = c.isVet ? ` <span class="badge-wildcard" style="background:#17a2b8; color:white;">VET</span>` : "";
-            let badgePara = c.isPara && cls !== "Paragility" ? ` <span class="badge-wildcard" style="background:#6f42c1; color:white;">PARAGILITY (${c.gruppo||'Gruppo 1'})</span>` : "";
-            
-            let saltoStr = getAltezzaSalto(c.cat, c.isVet);
-            
-            let strTeam = c.teamName ? `<br><span style="color:var(--secondary); font-weight:bold; font-size:14px;">🏁 Team: ${c.teamName}</span>` : "";
-            let hSaltoTag = cls === "Paragility" ? `<span style="color:var(--danger); font-weight:bold;"> Salto: ${saltoStr}cm</span> | ` : "";
-            
-            let nomeCaneHtml = `<div style="font-weight:900; font-size:17px; color:var(--primary);">${c.cane} ${strWild}${badgeVet}${badgePara}</div><div style="font-size:13px; color:#6c757d; margin-top:2px;">${hSaltoTag}${c.conduttore} - ${c.club}${strTeam}</div>`;
-            
-            let bgRow = item.isOut ? "background-color: #fff5f5;" : (item.hasT ? "background-color: #f8fff9;" : "");
-            let tempoFormattato = (item.hasT && !item.isOut) ? item.t.toFixed(2).replace('.',',') : "-";
-            
-            let tr = `<tr style="${bgRow}">
-                <td><div class="${rankClass}">${rankText}</div></td>
-                <td><b style="font-size:18px;">${c.pett}</b></td>
-                <td>${nomeCaneHtml}</td>
-                <td><b style="font-size:17px;">${tempoFormattato}</b></td>
-            `;
-
-            if (isGame) {
-                let ptsUI = (item.hasT && !item.isOut) ? item.textRisultato : "-";
-                let esitoUI = item.isOut ? `<b style="color:var(--danger)">${item.textRisultato}</b>` : "-";
-                tr += `
-                    <td style="font-size:20px; font-weight:900; color:var(--primary);">${ptsUI}</td>
-                    <td>${esitoUI}</td>
-                `;
-            } else {
-                let err = (item.hasT && !item.isOut) ? (d.err || "0") : "-";
-                let rif = (item.hasT && !item.isOut) ? (d.rif || "0") : "-";
-                let scoreColor = item.isOut ? "var(--danger)" : "var(--primary)";
-                
-                let qualHtml = `<span style="color:#6c757d; font-weight: bold;">-</span>`;
-                if (item.hasT || item.isOut) {
-                    let q = getQualificaTesto(item.scoreF, item.isOut ? item.textRisultato : "");
-                    qualHtml = `<span style="background:${q.bg}; color:${q.colore}; padding: 5px 10px; border-radius: 6px; font-weight: bold; font-size:12px; box-shadow:0 2px 4px rgba(0,0,0,0.1);">${q.testo}</span>`;
+        // Se siamo in Paragility con TUTTI I GRUPPI selezionati:
+        // mostriamo le classifiche separate per ogni Gruppo (solo chi ha già corso) + l'ordine di partenza unificato per l'altezza!
+        if (cls === "Paragility" && grpFiltro === "TUTTI") {
+            let htmlOut = "";
+            aParagility.forEach(grp => {
+                let cGrp = listaElaborata.filter(x => x.gruppo === grp && (x.hasT || x.isOut)).sort(sortFn);
+                if (cGrp.length > 0) {
+                    htmlOut += `<tr style="background:#e2d9f3;"><td colspan="8" style="font-weight:900; color:#4a2b82; font-size:15px; padding:10px 15px;">🏆 CLASSIFICA ${grp.toUpperCase()} — ALTEZZA: ${alt.toUpperCase()}</td></tr>`;
+                    cGrp.forEach((item, idx) => {
+                        htmlOut += creaRigaTabellaHTML(item, idx + 1, isGame, cls);
+                    });
                 }
-
-                tr += `
-                    <td style="font-size:16px; font-weight:bold;">${err}</td>
-                    <td style="font-size:16px; font-weight:bold;">${rif}</td>
-                    <td style="font-size:20px; font-weight:900; color:${scoreColor};">${item.textRisultato}</td>
-                    <td>${qualHtml}</td>
-                `;
+            });
+            let inAttesa = listaElaborata.filter(x => !x.hasT && !x.isOut).sort((a,b) => a.ordStart - b.ordStart);
+            if (inAttesa.length > 0) {
+                htmlOut += `<tr style="background:#e9ecef;"><td colspan="8" style="font-weight:900; color:#495057; font-size:14px; padding:10px 15px;">⏳ ORDINE DI PARTENZA UNIFICATO — ALTEZZA: ${alt.toUpperCase()} (Tutti i Gruppi)</td></tr>`;
+                inAttesa.forEach((item, idx) => {
+                    htmlOut += creaRigaTabellaHTML(item, idx + 1, isGame, cls);
+                });
             }
-            
-            tr += `</tr>`;
-            tbody.innerHTML += tr;
-        });
+            tbody.innerHTML = htmlOut;
+        } else {
+            listaElaborata.sort(sortFn);
+            let htmlOut = "";
+            listaElaborata.forEach((item, index) => {
+                htmlOut += creaRigaTabellaHTML(item, index + 1, isGame, cls);
+            });
+            tbody.innerHTML = htmlOut;
+        }
     }
 
     window.onload = avviaLive;

@@ -106,6 +106,7 @@
                     <option value="Senior" selected>Senior</option>
                     <option value="Junior">Junior</option>
                     <option value="Beginner">Beginner</option>
+                    <option value="Paragility">Paragility</option>
                 </select>
             </div>
             <div class="filter-group">
@@ -149,11 +150,29 @@
     let appData = null;
     let mancheAttuale = "Agility";
     
-    // TUTTE LE MANCHE, COMPRESO TRIATHLON
+    // TUTTE LE MANCHE, COMPRESO TRIATHLON E PARAGILITY
     const mStandard = ["Agility", "Jumping", "Snooker", "Gambler", "Biathlon B1", "Biathlon B2", "Triathlon T1", "Triathlon T2", "Triathlon T3"];
     const mBeginner = ["Jumping 1", "Jumping 2"];
+    const mParagility = ["Agility Open Paragility"];
     const aStandard = ["Toy", "Mini", "Medium", "Large", "Maxi"];
     const aBeginner = ["Toy", "Large"];
+    const aParagility = ["Gruppo 1", "Gruppo 2", "Gruppo 3", "Gruppo 4", "Gruppo 5", "Gruppo 6", "Gruppo 7", "Gruppo 8"];
+
+    function getAltezzaSalto(cat, isVet) {
+        let c = (cat || "").toLowerCase();
+        if (isVet) {
+            if (c === "toy" || c === "mini") return "20";
+            if (c === "medium") return "30";
+            if (c === "large" || c === "maxi") return "40";
+        } else {
+            if (c === "toy") return "25";
+            if (c === "mini") return "30";
+            if (c === "medium") return "40";
+            if (c === "large") return "50";
+            if (c === "maxi") return "60";
+        }
+        return "-";
+    }
 
     function avviaLive() {
         richiediDati();
@@ -201,7 +220,7 @@
         let selClasse = document.getElementById('sel-classe');
         let currentCls = selClasse.value;
         
-        let classiPossibili = ["Senior", "Junior", "Beginner"];
+        let classiPossibili = ["Senior", "Junior", "Beginner", "Paragility"];
         let classiAttive = classiPossibili.filter(c => manchesRegia.includes("TUTTE") || manchesRegia.includes(c));
         
         if (classiAttive.length === 0) {
@@ -221,10 +240,12 @@
             selClasse.value = classiAttive[0];
         }
         let cls = selClasse.value;
+        let isPara = (cls === 'Paragility');
+        let isBeg = (cls === 'Beginner');
         
-        // 2. GESTIONE ALTEZZE
+        // 2. GESTIONE ALTEZZE (O GRUPPI PER PARAGILITY)
         let altSelect = document.getElementById('sel-altezza');
-        let arrAltValide = (cls === 'Beginner') ? aBeginner : aStandard;
+        let arrAltValide = isPara ? aParagility : (isBeg ? aBeginner : aStandard);
         let altSelezionata = altSelect.value;
         
         if (!arrAltValide.includes(altSelezionata)) {
@@ -235,9 +256,11 @@
             altSelect.innerHTML = "";
             arrAltValide.forEach(a => altSelect.innerHTML += `<option value="${a}" ${a===altSelezionata?'selected':''}>${a}</option>`);
         }
+        
+        document.querySelector('.filter-group:nth-child(2) label').innerText = isPara ? "Gruppo (Disabilità)" : "Altezza (Categoria)";
 
         // 3. GESTIONE MANCHE
-        let manchsClasse = (cls === 'Beginner') ? mBeginner : mStandard;
+        let manchsClasse = isPara ? mParagility : (isBeg ? mBeginner : mStandard);
         let manchesAttive = manchsClasse.filter(m => manchesRegia.includes("TUTTE") || manchesRegia.includes(m));
         
         if (!manchesAttive.includes(mancheAttuale) && manchesAttive.length > 0) {
@@ -319,6 +342,10 @@
         // GARE STANDARD
         else {
             atletiGara = appData.iscritti.filter(b => {
+                if (cls === "Paragility") {
+                    return b.isPara && String(b.gruppo).trim() === String(alt).trim();
+                }
+                
                 let matchesAlt = String(b.cat).trim() === String(alt).trim();
                 let matchesClass = String(b.classe).trim() === String(cls).trim();
                 
@@ -407,9 +434,15 @@
             }
 
             let strWild = c.isWildcard ? `<span class="badge-wildcard">J-FINALISSIMA</span>` : "";
-            let strTeam = c.teamName ? `<br><span style="color:var(--secondary); font-weight:bold; font-size:14px;">🏁 Team: ${c.teamName}</span>` : "";
+            let badgeVet = c.isVet ? ` <span class="badge-wildcard" style="background:#17a2b8; color:white;">VET</span>` : "";
+            let badgePara = c.isPara && cls !== "Paragility" ? ` <span class="badge-wildcard" style="background:#6f42c1; color:white;">PARAGILITY (${c.gruppo||'Gruppo 1'})</span>` : "";
             
-            let nomeCaneHtml = `<div style="font-weight:900; font-size:17px; color:var(--primary);">${c.cane} ${strWild}</div><div style="font-size:13px; color:#6c757d; margin-top:2px;">${c.conduttore} - ${c.club}${strTeam}</div>`;
+            let saltoStr = getAltezzaSalto(c.cat, c.isVet);
+            
+            let strTeam = c.teamName ? `<br><span style="color:var(--secondary); font-weight:bold; font-size:14px;">🏁 Team: ${c.teamName}</span>` : "";
+            let hSaltoTag = cls === "Paragility" ? `<span style="color:var(--danger); font-weight:bold;"> Salto: ${saltoStr}cm</span> | ` : "";
+            
+            let nomeCaneHtml = `<div style="font-weight:900; font-size:17px; color:var(--primary);">${c.cane} ${strWild}${badgeVet}${badgePara}</div><div style="font-size:13px; color:#6c757d; margin-top:2px;">${hSaltoTag}${c.conduttore} - ${c.club}${strTeam}</div>`;
             
             let bgRow = item.isOut ? "background-color: #fff5f5;" : (item.hasT ? "background-color: #f8fff9;" : "");
             let tempoFormattato = (item.hasT && !item.isOut) ? item.t.toFixed(2).replace('.',',') : "-";

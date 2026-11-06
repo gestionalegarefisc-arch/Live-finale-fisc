@@ -124,9 +124,9 @@
             <div class="filter-group" id="box-sel-div" style="display:none;">
                 <label>Divisione Staffetta</label>
                 <select id="sel-div" onchange="aggiornaUI()">
-                    <option value="TUTTE">-- TUTTE LE DIVISIONI --</option>
-                    <option value="Small">Divisione Small</option>
+                    <option value="Small" selected>Divisione Small</option>
                     <option value="Large">Divisione Large</option>
+                    <option value="TUTTE">Tutte (Prima Small poi Large)</option>
                 </select>
             </div>
             <div class="filter-group" id="box-sel-gruppo" style="display:none;">
@@ -254,6 +254,27 @@
         }
         nascondiOffline();
         appData = data;
+        if (appData && Array.isArray(appData.squadre)) {
+            appData.squadre.forEach(sq => {
+                if (sq.membri && sq.membri.length === 3) {
+                    let countL = 0, countS = 0;
+                    sq.membri.forEach(m => {
+                        let isL = (m.jumpUp === "Large" || m.jumpUp === "Maxi" || m.jumpUp === "Vet Large/Maxi");
+                        if (isL) countL++; else countS++;
+                    });
+                    let majority = countL >= 2 ? "Large" : "Small";
+                    let arrMaj = [], arrMin = [];
+                    sq.membri.forEach(m => {
+                        let isL = (m.jumpUp === "Large" || m.jumpUp === "Maxi" || m.jumpUp === "Vet Large/Maxi");
+                        let t = isL ? "Large" : "Small";
+                        if (t === majority) arrMaj.push(m); else arrMin.push(m);
+                    });
+                    if (arrMaj.length === 2 && arrMin.length === 1) {
+                        sq.membri = [arrMaj[0], arrMin[0], arrMaj[1]];
+                    }
+                }
+            });
+        }
         aggiornaUI();
     }
 
@@ -478,77 +499,86 @@
         let atletiGara = [];
         let divSel = document.getElementById('sel-div') ? document.getElementById('sel-div').value : "TUTTE";
         
-        // SEZIONE TRIATHLON (T3 STAFFETTA A SQUADRE ESPLOSA COME NEL GESTIONALE)
+        // SEZIONE TRIATHLON (T3 STAFFETTA A SQUADRE ESPLOSA IDENTICA AL GESTIONALE)
         if (manche === "Triathlon T3" && appData.squadre) {
             head.innerHTML = `<tr><th width="50">Rank</th><th>Squadra</th><th width="50">Ord.</th><th>Binomio</th><th width="100">Tempo</th><th width="80">Err</th><th width="80">Rif</th><th width="100">E/A</th></tr>`;
-            let filteredTeams = appData.squadre.filter(sq => divSel === "TUTTE" || sq.divisione === divSel);
-            let teams = filteredTeams.map(sq => {
+            let filteredTeams = [...appData.squadre].filter(sq => divSel === "TUTTE" || sq.divisione === divSel);
+            
+            let teamScores = filteredTeams.map(sq => {
                 let penT3 = 0, completi = 0;
                 sq.membri.forEach(m => {
                     let d = appData.risultati[manche] && appData.risultati[manche][m.pett] ? appData.risultati[manche][m.pett] : {};
-                    let t = parseFloat(formattaTempo(d.tempo).replace(',','.')) || 0;
-                    let isOut = ['E','A','DIS','ABS'].includes(d.esito);
-                    if (t > 0 || isOut) {
+                    if (d.tempo || ['E','A','DIS','ABS'].includes(d.esito)) {
                         penT3 += getTimePlusFaults(manche, m.pett, "Senior").val;
                         completi++;
                     } else {
                         penT3 += 100;
                     }
                 });
-                let primoCane = appData.iscritti.find(x => String(x.pett) === String(sq.membri[0].pett)) || {};
-                let ord = (primoCane.ordini && primoCane.ordini[manche]) ? (parseInt(primoCane.ordini[manche]) || 999) : 999;
-                return { ...sq, scoreF: penT3, completato: completi === 3, ord: ord };
-            });
-            
-            teams.sort((a,b) => {
-                if (divSel === "TUTTE" && a.divisione !== b.divisione && !a.completato && !b.completato) {
-                    return a.divisione === 'Small' ? -1 : 1;
+                let ord = 999;
+                for (let k = 0; k < sq.membri.length; k++) {
+                    let c = appData.iscritti.find(x => String(x.pett) === String(sq.membri[k].pett));
+                    if (c && c.ordini && c.ordini[manche]) {
+                        ord = parseInt(c.ordini[manche]) || 999;
+                        break;
+                    }
                 }
+                return { sq: sq, score: penT3, completato: completi === 3, ord: ord };
+            });
+
+            // Calcolo Rank provvisorio/finale solo per il bollino a sinistra
+            let sortedForRank = [...teamScores].sort((a,b) => {
                 if (!a.completato && b.completato) return 1;
                 if (a.completato && !b.completato) return -1;
-                if (!a.completato && !b.completato) return a.ord - b.ord;
-                return a.scoreF - b.scoreF;
+                return a.score - b.score;
+            });
+
+            // Ordine delle righe in tabella: rigorosamente per Ordine di Partenza come nel Gestionale!
+            teamScores.sort((a,b) => {
+                if (divSel === "TUTTE" && a.sq.divisione !== b.sq.divisione) {
+                    return a.sq.divisione === 'Small' ? -1 : 1;
+                }
+                return a.ord - b.ord;
             });
             
             tbody.innerHTML = "";
-            if (teams.length === 0) {
+            if (teamScores.length === 0) {
                 tbody.innerHTML = `<tr><td colspan="8" align="center" style="padding: 30px; font-weight:bold; color:#6c757d;">Nessuna squadra iscritta in questa divisione.</td></tr>`;
                 return;
             }
             
             let htmlAll = "";
-            teams.forEach((ts, idx) => {
-                let rBadge = ts.completato ? `<div class="rank-badge ${idx<3 ? 'rank-'+(idx+1) : ''}">${idx+1}</div>` : `<div class="rank-badge">-</div>`;
-                let bgRow = ts.completato ? "background-color: #f8fff9;" : "background-color: #fff;";
-                let scoreText = ts.scoreF.toFixed(3).replace('.',',');
+            teamScores.forEach(ts => {
+                let sq = ts.sq;
+                let rankNum = ts.completato ? (sortedForRank.findIndex(x => x.sq.id === sq.id) + 1) : null;
+                let rBadge = rankNum ? `<div class="rank-badge ${rankNum<=3 ? 'rank-'+rankNum : ''}">${rankNum}</div>` : `<div class="rank-badge">-</div>`;
+                let scoreText = ts.score.toFixed(3).replace('.',',');
                 
-                let htmlCard = `<tr style="border-top:3px solid var(--primary); ${bgRow}">
+                let tr1 = `<tr style="border-top:3px solid #004085; background:#f8f9fa;">
                     <td rowspan="3" style="vertical-align:middle; text-align:center;">${rBadge}</td>
                     <td rowspan="3" style="vertical-align:top;">
-                        <b style="font-size:18px; color:var(--primary);">${ts.nome}</b>
-                        <span class="badge-wildcard" style="background:#0d6efd; color:white; margin-left:6px; border:none;">${ts.divisione.toUpperCase()}</span>
-                        <div style="background:#d1e7dd; padding:6px 10px; margin-top:8px; border-radius:4px; font-weight:bold; color:#0f5132;">Tot: <span style="font-size:18px;">${scoreText}</span></div>
+                        <b>${sq.nome}</b><br>
+                        <div style="background:#d1e7dd; padding:5px 8px; margin-top:5px; border-radius:4px; font-weight:bold;">Tot: <span style="font-size:18px;">${scoreText}</span></div>
                     </td>`;
                 
-                ts.membri.forEach((m, i) => {
-                    let c = appData.iscritti.find(x => String(x.pett) === String(m.pett)) || { pett: m.pett, conduttore: "Sconosciuto", cane: "???", ordini: {} };
+                sq.membri.forEach((m, i) => {
+                    let c = appData.iscritti.find(x => String(x.pett) === String(m.pett)) || { pett: m.pett, conduttore: "Sconosciuto", cane: "Eliminato", ordini: {} };
                     let d = appData.risultati[manche] && appData.risultati[manche][m.pett] ? appData.risultati[manche][m.pett] : {tempo:"", err:"", rif:"", esito:""};
                     let ordManche = (c.ordini && c.ordini[manche]) ? c.ordini[manche] : (ts.ord !== 999 ? ts.ord : '-');
                     let isE = (d.esito === 'E' || d.esito === 'DIS');
                     let isA = (d.esito === 'A' || d.esito === 'ABS');
                     let esitoStr = isE ? "E" : (isA ? "A" : "-");
-                    let colorTxt = (isE || isA) ? "color:#dc3545;" : "color:var(--text);";
+                    let colorTxt = (isE || isA) ? "color:#dc3545;" : "";
                     
-                    let row = `<td><span class="badge-pos">${ordManche}</span></td>
-                               <td><div style="font-weight:bold; font-size:16px; ${colorTxt}">[${c.pett}] ${c.conduttore} - ${c.cane}</div><div style="font-size:12px; color:#6c757d;">${c.club || ''}</div></td>
-                               <td><b style="font-size:16px;">${formattaTempo(d.tempo) || "-"}</b></td>
-                               <td><b style="font-size:16px;">${d.err !== undefined && d.err !== "" ? d.err : "-"}</b></td>
-                               <td><b style="font-size:16px;">${d.rif !== undefined && d.rif !== "" ? d.rif : "-"}</b></td>
-                               <td><b style="font-size:18px; ${isE||isA ? 'color:#dc3545;':''}">${esitoStr}</b></td></tr>`;
+                    let row = `<td><span class="badge-pos" style="background:#004085; color:white;">${ordManche}</span></td>
+                               <td style="${colorTxt}"><b>[${c.pett}] ${c.conduttore} - ${c.cane}</b></td>
+                               <td><b>${formattaTempo(d.tempo) || "-"}</b></td>
+                               <td><b>${d.err !== undefined && d.err !== "" ? d.err : "-"}</b></td>
+                               <td><b>${d.rif !== undefined && d.rif !== "" ? d.rif : "-"}</b></td>
+                               <td><b style="${isE||isA ? 'color:#dc3545;':''}">${esitoStr}</b></td></tr>`;
                     
-                    htmlCard += (i === 0) ? row : `<tr style="${bgRow}">${row}`;
+                    htmlAll += (i === 0) ? (tr1 + row) : `<tr style="background:#f8f9fa;">${row}`;
                 });
-                htmlAll += htmlCard;
             });
             tbody.innerHTML = htmlAll;
             return;

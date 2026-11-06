@@ -108,7 +108,7 @@
                     <option value="Paragility">Paragility</option>
                 </select>
             </div>
-            <div class="filter-group">
+            <div class="filter-group" id="box-sel-altezza">
                 <label id="lbl-altezza">Altezza (Categoria)</label>
                 <select id="sel-altezza" onchange="aggiornaUI()">
                     <option value="Toy">Toy</option>
@@ -119,6 +119,14 @@
                     <option value="Vet Toy/Mini">Vet Toy/Mini (20cm)</option>
                     <option value="Vet Medium">Vet Medium (30cm)</option>
                     <option value="Vet Large/Maxi">Vet Large/Maxi (40cm)</option>
+                </select>
+            </div>
+            <div class="filter-group" id="box-sel-div" style="display:none;">
+                <label>Divisione Staffetta</label>
+                <select id="sel-div" onchange="aggiornaUI()">
+                    <option value="TUTTE">-- TUTTE LE DIVISIONI --</option>
+                    <option value="Small">Divisione Small</option>
+                    <option value="Large">Divisione Large</option>
                 </select>
             </div>
             <div class="filter-group" id="box-sel-gruppo" style="display:none;">
@@ -349,8 +357,11 @@
         let isPara = (cls === 'Paragility');
         let isBeg = (cls === 'Beginner');
         
-        // Mostra/Nascondi filtro Gruppo Paragility
-        document.getElementById('box-sel-gruppo').style.display = isPara ? 'flex' : 'none';
+        // Mostra/Nascondi filtri
+        let isTriaTeams = (mancheAttuale === "Triathlon T3" || mancheAttuale === "🏆 Triathlon");
+        document.getElementById('box-sel-altezza').style.display = isTriaTeams ? 'none' : 'flex';
+        document.getElementById('box-sel-div').style.display = isTriaTeams ? 'flex' : 'none';
+        document.getElementById('box-sel-gruppo').style.display = (!isTriaTeams && isPara) ? 'flex' : 'none';
 
         // 2. GESTIONE ALTEZZE (5 Canoniche + 3 Veterani per Senior/Junior/Paragility)
         let altSelect = document.getElementById('sel-altezza');
@@ -504,10 +515,13 @@
 
         let atletiGara = [];
 
+        let divSel = document.getElementById('sel-div') ? document.getElementById('sel-div').value : "TUTTE";
+        
         // SEZIONE TRIATHLON (T3 STAFFETTA)
         if (manche === "Triathlon T3" && appData.squadre) {
-            head.innerHTML = `<tr><th>Rank</th><th>Squadra & Div.</th><th>Conduttori a Podio</th><th colspan="2">Team Score</th><th>Stato</th></tr>`;
-            let teams = appData.squadre.map(sq => {
+            head.innerHTML = `<tr><th width="50">Rank</th><th>Squadra & Div.</th><th width="50">Ord.</th><th>Cane (Jump-Up)</th><th width="100">Tempo</th><th width="80">Err</th><th width="80">Rif</th><th width="100">E/A</th></tr>`;
+            let filteredTeams = appData.squadre.filter(sq => divSel === "TUTTE" || sq.divisione === divSel);
+            let teams = filteredTeams.map(sq => {
                 let penT3 = 0, completi = 0;
                 sq.membri.forEach(m => {
                     let d = appData.risultati[manche] && appData.risultati[manche][m.pett] ? appData.risultati[manche][m.pett] : {};
@@ -546,43 +560,45 @@
             
             tbody.innerHTML = "";
             if (teams.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="6" align="center" style="padding: 30px; font-weight:bold; color:#6c757d;">Nessuna squadra iscritta.</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="8" align="center" style="padding: 30px; font-weight:bold; color:#6c757d;">Nessuna squadra iscritta.</td></tr>`;
                 return;
             }
+            
             teams.forEach((ts, idx) => {
-                let rBadge = ts.completato ? `<div class="rank-badge ${idx<3 ? 'rank-'+(idx+1) : ''}">${idx+1}</div>` : `<span style="font-size:11px;">Ord.${ts.ord}</span>`;
+                let rBadge = ts.completato ? `<div class="rank-badge ${idx<3 ? 'rank-'+(idx+1) : ''}">${idx+1}</div>` : `-`;
                 let bgRow = ts.completato ? "background-color: #f8fff9;" : "background-color: #fff;";
-                let roasterHtml = "";
-                ts.membri.forEach(m => {
-                    let c = appData.iscritti.find(x => String(x.pett) === String(m.pett));
-                    if (c) {
-                        let isOut = false;
-                        let d = appData.risultati[manche] && appData.risultati[manche][m.pett] ? appData.risultati[manche][m.pett] : {};
-                        if (['E','A','DIS','ABS'].includes(d.esito)) isOut = true;
-                        let errStyle = isOut ? "color:#dc3545; text-decoration:line-through;" : "color:#495057;";
-                        roasterHtml += `<div style="font-size:13px; font-weight:bold; margin-bottom:2px; ${errStyle}">[${m.pett}] ${c.conduttore} - ${c.cane} (S: ${m.jumpUp || getCategoriaEffettiva(c, c.classe)})</div>`;
-                    }
-                });
-                if (ts.storico && ts.storico.length > 0) {
-                    roasterHtml += `<div style="font-size:11px; color:#dc3545; margin-top:4px;">+ Sostituiti: `;
-                    ts.storico.forEach(s => {
-                        let cs = appData.iscritti.find(x => String(x.pett) === String(s.pett));
-                        if(cs) roasterHtml += `[${s.pett}] ${cs.conduttore} `;
-                    });
-                    roasterHtml += `</div>`;
-                }
-                
                 let scoreText = ts.completato ? ts.scoreF.toFixed(3).replace('.',',') : "IN GARA";
                 let colorScore = ts.completato ? "var(--primary)" : "#6c757d";
-                let badgeStatus = ts.completato ? `<span style="background:var(--success); color:white; padding:4px 8px; border-radius:4px; font-weight:bold; font-size:12px;">CHIUSO</span>` : `<span style="background:var(--warning); color:black; padding:4px 8px; border-radius:4px; font-weight:bold; font-size:12px;">ATTESA</span>`;
                 
-                let htmlCard = `<tr style="${bgRow} border-top:3px solid var(--primary);">
-                    <td>${rBadge}</td>
-                    <td><b style="font-size:18px; color:var(--primary);">${ts.nome}</b><br><span class="badge-wildcard" style="background:#0d6efd; color:white; margin-left:0;">${ts.divisione.toUpperCase()}</span></td>
-                    <td>${roasterHtml}</td>
-                    <td colspan="2"><b style="font-size:22px; color:${colorScore};">${scoreText}</b></td>
-                    <td>${badgeStatus}</td>
-                </tr>`;
+                let htmlCard = `<tr style="border-top:3px solid var(--primary); ${bgRow}">
+                    <td rowspan="3" style="vertical-align:middle; text-align:center;">${rBadge}</td>
+                    <td rowspan="3" style="vertical-align:top;">
+                        <b style="font-size:18px; color:var(--primary);">${ts.nome}</b><br>
+                        <span class="badge-wildcard" style="background:#0d6efd; color:white; margin-left:0;">${ts.divisione.toUpperCase()}</span>
+                        <div style="background:#e9ecef; padding:5px; margin-top:8px; border-radius:4px; font-weight:bold;">Tot: <span style="font-size:18px; color:${colorScore};">${scoreText}</span></div>
+                    </td>`;
+                
+                ts.membri.forEach((m, i) => {
+                    let c = appData.iscritti.find(x => String(x.pett) === String(m.pett));
+                    if (c) {
+                        let d = appData.risultati[manche] && appData.risultati[manche][m.pett] ? appData.risultati[manche][m.pett] : {tempo:"", err:"", rif:"", esito:""};
+                        let ordManche = (c.ordini && c.ordini[manche]) ? c.ordini[manche] : '-';
+                        let isE = (d.esito === 'E' || d.esito === 'DIS');
+                        let isA = (d.esito === 'A' || d.esito === 'ABS');
+                        let esitoStr = isE ? "E" : (isA ? "A" : "-");
+                        let colorTxt = (isE || isA) ? "color:#dc3545;" : "color:var(--text);";
+                        
+                        let jumpEffettivo = m.jumpUp || getCategoriaEffettiva(c, c.classe);
+                        let row = `<td><span class="badge-pos" style="background:var(--primary); color:white;">${ordManche}</span></td>
+                                   <td><div style="font-weight:bold; font-size:15px; ${colorTxt}">[${c.pett}] ${c.conduttore} - ${c.cane}</div><div style="font-size:12px; color:#6c757d;">Salto: ${jumpEffettivo}</div></td>
+                                   <td><b style="font-size:16px;">${formattaTempo(d.tempo) || "-"}</b></td>
+                                   <td><b style="font-size:16px;">${d.err || "-"}</b></td>
+                                   <td><b style="font-size:16px;">${d.rif || "-"}</b></td>
+                                   <td><b style="font-size:18px; ${isE||isA ? 'color:#dc3545;':''}">${esitoStr}</b></td></tr>`;
+                        
+                        htmlCard += (i === 0) ? row : `<tr style="${bgRow}">${row}`;
+                    }
+                });
                 tbody.innerHTML += htmlCard;
             });
             return;
@@ -888,13 +904,15 @@
             }
         }
         else if (tipo === "🏆 Triathlon") {
+            let divSel = document.getElementById('sel-div') ? document.getElementById('sel-div').value : "TUTTE";
             head.innerHTML = `<tr><th>Rank</th><th>Squadra & Div.</th><th>Conduttori a Podio</th><th colspan="2">Triathlon Score</th><th>Stato</th></tr>`;
             if (!appData.squadre || appData.squadre.length === 0) {
                 tbody.innerHTML = `<tr><td colspan="6" align="center" style="padding:30px; font-weight:bold; color:#dc3545;">Nessuna squadra iscritta.</td></tr>`;
                 return;
             }
             
-            let cl = appData.squadre.map(sq => {
+            let filteredTeams = appData.squadre.filter(sq => divSel === "TUTTE" || sq.divisione === divSel);
+            let cl = filteredTeams.map(sq => {
                 let t = 0, cc = 0;
                 sq.membri.forEach(m => {
                     let d = appData.risultati['Triathlon T3'] && appData.risultati['Triathlon T3'][m.pett] ? appData.risultati['Triathlon T3'][m.pett] : null;
@@ -912,7 +930,8 @@
             });
             
             let htmlOut = "";
-            ["Small", "Large"].forEach(div => {
+            let divDaMostrare = divSel === "TUTTE" ? ["Small", "Large"] : [divSel];
+            divDaMostrare.forEach(div => {
                 let cDiv = cl.filter(x => x.divisione === div).sort((a,b) => {
                     if (!a.comp && b.comp) return 1;
                     if (a.comp && !b.comp) return -1;

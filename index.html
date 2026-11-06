@@ -332,7 +332,6 @@
             mancheAttuale = manchesAttive[0];
         }
 
-        // Mostra/Nascondi filtri in base alla manche effettiva
         let isTriaTeams = (mancheAttuale === "Triathlon T3" || mancheAttuale === "🏆 Triathlon");
         document.getElementById('box-sel-altezza').style.display = isTriaTeams ? 'none' : 'flex';
         document.getElementById('box-sel-div').style.display = isTriaTeams ? 'flex' : 'none';
@@ -421,7 +420,6 @@
         
         let strTeam = c.teamName ? ` <span style="color:var(--secondary); font-weight:bold;">| 🏁 Team: ${c.teamName}</span>` : "";
         
-        // Conduttore e Cane stesso livello e grandezza, Club sotto più piccolo, nessun Salto: cm
         let nomeCaneHtml = `<div style="font-weight:900; font-size:17px; color:var(--primary);">${c.conduttore} - ${c.cane} ${strWild}${badgePara}${badgeVet}</div><div style="font-size:13px; color:#6c757d; margin-top:2px;">${c.club || ''}${strTeam}</div>`;
         
         let bgRow = item.isOut ? "background-color: #fff5f5;" : (item.hasT ? "background-color: #f8fff9;" : "");
@@ -556,7 +554,7 @@
             return;
         }
         
-        // SEZIONE TRIATHLON (T1 / T2) - Allineata al Gestionale (Senior e Junior insieme per Jump-Up)
+        // SEZIONE TRIATHLON (T1 / T2)
         else if (manche.startsWith("Triathlon") && appData.squadre) {
             appData.squadre.forEach(sq => {
                 sq.membri.forEach(m => {
@@ -572,7 +570,7 @@
                 });
             });
         } 
-        // GARE STANDARD E PARAGILITY - Allineata 1:1 con ottieniCaniPerGara del Gestionale
+        // GARE STANDARD E PARAGILITY
         else {
             atletiGara = appData.iscritti.filter(b => {
                 let catEff = getCategoriaEffettiva(b, cls);
@@ -594,7 +592,6 @@
             });
         }
 
-        // Pre-ordinamento identico a ottieniCaniPerGara del Gestionale
         atletiGara.sort((a,b) => {
             let oA = (a.ordini && a.ordini[manche]) ? (parseInt(a.ordini[manche]) || 999) : 999;
             let oB = (b.ordini && b.ordini[manche]) ? (parseInt(b.ordini[manche]) || 999) : 999;

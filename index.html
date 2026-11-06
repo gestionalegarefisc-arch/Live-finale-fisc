@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Finale di Agility FISC 2026 - Live Scoreboard</title>
     <style>
-        /* === RE-STYLING GRAFICO === */
         :root { 
             --primary: #1a1a1a;
             --secondary: #198754; 
@@ -40,7 +39,7 @@
         select { padding: 12px; font-size: 16px; border: 2px solid #ced4da; border-radius: 8px; font-weight: bold; color: var(--primary); outline: none; cursor: pointer; transition: 0.3s;}
         select:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(26, 26, 26, 0.1);}
 
-        /* PULSANTI MANCHE (STILE PILLOLA) */
+        /* PULSANTI MANCHE */
         .manche-buttons { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 25px; justify-content: center;}
         .btn-manche { 
             display: flex; align-items: center; justify-content: center; gap: 10px; 
@@ -63,12 +62,13 @@
         tr:last-child td { border-bottom: none; }
         tr:hover td { background-color: #f8f9fa; }
         
-        .rank-badge { width: 34px; height: 34px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 900; background: #e9ecef; color: #495057; font-size: 15px;}
+        .rank-badge { width: 34px; height: 34px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-weight: 900; background: #e9ecef; color: #495057; font-size: 15px;}
         .rank-1 { background: #ffd700; color: #000; box-shadow: 0 0 15px rgba(255,215,0,0.6); transform: scale(1.1);}
         .rank-2 { background: #c0c0c0; color: #000; }
         .rank-3 { background: #cd7f32; color: #fff; }
+        .badge-pos { width: 32px; height: 32px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-weight: bold; background: var(--primary); color: white; font-size: 14px; }
         
-        .badge-wildcard { background: var(--warning); color: #000; font-size: 11px; padding: 4px 8px; border-radius: 6px; font-weight: bold; border: 1px solid #d39e00; margin-left: 8px; vertical-align: middle;}
+        .badge-wildcard { background: var(--warning); color: #000; font-size: 11px; padding: 4px 8px; border-radius: 6px; font-weight: bold; border: 1px solid #d39e00; margin-left: 8px; vertical-align: middle; display: inline-block;}
         
         #overlay-offline { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(26,26,26,0.95); color: white; display: none; flex-direction: column; align-items: center; justify-content: center; z-index: 9999; backdrop-filter: blur(5px);}
         #overlay-offline h2 { font-size: 45px; margin-bottom: 15px; color: var(--danger); letter-spacing: 2px;}
@@ -116,9 +116,9 @@
                     <option value="Medium" selected>Medium</option>
                     <option value="Large">Large</option>
                     <option value="Maxi">Maxi</option>
-                    <option value="Vet Toy/Mini">Vet Toy/Mini (20cm)</option>
-                    <option value="Vet Medium">Vet Medium (30cm)</option>
-                    <option value="Vet Large/Maxi">Vet Large/Maxi (40cm)</option>
+                    <option value="Vet Toy/Mini">Vet Toy/Mini</option>
+                    <option value="Vet Medium">Vet Medium</option>
+                    <option value="Vet Large/Maxi">Vet Large/Maxi</option>
                 </select>
             </div>
             <div class="filter-group" id="box-sel-div" style="display:none;">
@@ -145,9 +145,7 @@
             </div>
         </div>
 
-        <div class="manche-buttons" id="manche-container">
-            <!-- Popolato via JS -->
-        </div>
+        <div class="manche-buttons" id="manche-container"></div>
 
         <div class="board-container">
             <table>
@@ -176,7 +174,6 @@
     let inRichiesta = false;
     let ringManchesConfig = null;
     
-    // TUTTE LE MANCHE E ALTEZZE (5 CANONICHE + 3 VETERANI)
     const mStandard = ["Agility", "Jumping", "Snooker", "Gambler", "Biathlon B1", "Biathlon B2", "Triathlon T1", "Triathlon T2", "Triathlon T3"];
     const mBeginner = ["Jumping 1", "Jumping 2"];
     const mParagility = ["Agility Open Paragility"];
@@ -209,43 +206,15 @@
         }
     }
 
-    function getAltezzaSalto(cat, isVet, isParaGara = false) {
-        let c = (cat || "").toLowerCase();
-        if (c.startsWith("vet")) {
-            if (c.includes("toy") || c.includes("mini")) return "20";
-            if (c.includes("medium")) return "30";
-            if (c.includes("large") || c.includes("maxi")) return "40";
-        }
-        if (isVet) {
-            if (isParaGara) {
-                if (c === "toy" || c === "mini") return "20";
-                if (c === "medium") return "30";
-                if (c === "large" || c === "maxi") return "40";
-            } else {
-                if (c === "toy" || c === "mini") return "25";
-                if (c === "medium") return "30";
-                if (c === "large" || c === "maxi") return "40";
-            }
-        } else {
-            if (c === "toy") return "25";
-            if (c === "mini") return "30";
-            if (c === "medium") return "40";
-            if (c === "large") return "50";
-            if (c === "maxi") return "60";
-        }
-        return "-";
-    }
-
     function avviaLive() {
         richiediDati();
-        setInterval(richiediDati, 6000); // Polling rapido 6 sec
+        setInterval(richiediDati, 6000);
     }
 
     function richiediDati() {
         if (inRichiesta) return;
         inRichiesta = true;
 
-        // Se aperto direttamente dentro Google Apps Script, usa il canale diretto istantaneo
         if (typeof google !== 'undefined' && google.script && google.script.run) {
             google.script.run
                 .withSuccessHandler(function(res) {
@@ -263,7 +232,6 @@
             return;
         }
 
-        // Altrimenti usa JSONP verso API_URL con anti-cache e timeout di 15s
         let script = document.createElement('script');
         let timestamp = new Date().getTime() + "_" + Math.floor(Math.random() * 100000);
         script.src = `${API_URL}?azione=ottieni_dati_live&callback=riceviDatiLIVE&t=${timestamp}`;
@@ -309,7 +277,6 @@
         let liveManchesConfig = appData.liveManches || null;
         ringManchesConfig = appData.ringManches || null;
         
-        // Convert old array config to matrix if needed
         let fallbackCfg = {
             "Senior": ["Agility", "Jumping", "Snooker", "Gambler", "Biathlon B1", "Biathlon B2", "Triathlon T1", "Triathlon T2", "Triathlon T3", "🏆 All-Around", "🏆 Biathlon", "🏆 Triathlon"],
             "Junior": ["Agility", "Jumping", "Snooker", "Gambler", "Biathlon B1", "Biathlon B2", "Triathlon T1", "Triathlon T2", "Triathlon T3", "🏆 All-Around", "🏆 Biathlon", "🏆 Triathlon"],
@@ -326,12 +293,10 @@
             });
         }
         
-        // Safety check to ensure all keys exist
         ["Senior", "Junior", "Beginner", "Paragility"].forEach(c => {
             if (!liveManchesConfig[c]) liveManchesConfig[c] = fallbackCfg[c];
         });
         
-        // 1. GESTIONE CLASSI BASATA SU REGIA LIVE
         let selClasse = document.getElementById('sel-classe');
         let currentCls = selClasse.value;
         
@@ -356,14 +321,23 @@
         let cls = selClasse.value;
         let isPara = (cls === 'Paragility');
         let isBeg = (cls === 'Beginner');
+
+        let manchsClasse = isPara ? mParagility : (isBeg ? mBeginner : mStandard);
+        let classificheClasse = isPara ? [] : (isBeg ? ["🏆 All-Around"] : ["🏆 All-Around", "🏆 Biathlon", "🏆 Triathlon"]);
+        let fullList = manchsClasse.concat(classificheClasse);
         
-        // Mostra/Nascondi filtri
+        let manchesAttive = fullList.filter(m => liveManchesConfig[cls] && liveManchesConfig[cls].includes(m));
+        
+        if (!manchesAttive.includes(mancheAttuale) && manchesAttive.length > 0) {
+            mancheAttuale = manchesAttive[0];
+        }
+
+        // Mostra/Nascondi filtri in base alla manche effettiva
         let isTriaTeams = (mancheAttuale === "Triathlon T3" || mancheAttuale === "🏆 Triathlon");
         document.getElementById('box-sel-altezza').style.display = isTriaTeams ? 'none' : 'flex';
         document.getElementById('box-sel-div').style.display = isTriaTeams ? 'flex' : 'none';
         document.getElementById('box-sel-gruppo').style.display = (!isTriaTeams && isPara) ? 'flex' : 'none';
 
-        // 2. GESTIONE ALTEZZE (5 Canoniche + 3 Veterani per Senior/Junior/Paragility)
         let altSelect = document.getElementById('sel-altezza');
         let arrAltValide = isPara ? aParaAltezze : (isBeg ? aBeginner : aStandard);
         let altSelezionata = altSelect.value;
@@ -375,17 +349,6 @@
         } else {
             altSelect.innerHTML = "";
             arrAltValide.forEach(a => altSelect.innerHTML += `<option value="${a}" ${a===altSelezionata?'selected':''}>${a}</option>`);
-        }
-
-        // 3. GESTIONE MANCHE & CLASSIFICHE
-        let manchsClasse = isPara ? mParagility : (isBeg ? mBeginner : mStandard);
-        let classificheClasse = isPara ? [] : (isBeg ? ["🏆 All-Around"] : ["🏆 All-Around", "🏆 Biathlon", "🏆 Triathlon"]);
-        let fullList = manchsClasse.concat(classificheClasse);
-        
-        let manchesAttive = fullList.filter(m => liveManchesConfig[cls] && liveManchesConfig[cls].includes(m));
-        
-        if (!manchesAttive.includes(mancheAttuale) && manchesAttive.length > 0) {
-            mancheAttuale = manchesAttive[0];
         }
 
         let containerBtn = document.getElementById('manche-container');
@@ -453,14 +416,13 @@
         }
 
         let strWild = c.isWildcard ? `<span class="badge-wildcard">J-FINALISSIMA</span>` : "";
+        let badgePara = (c.isPara || cls === "Paragility") ? ` <span class="badge-wildcard" style="background:#6f42c1; color:white;">PARAGILITY (${c.gruppo||'Gruppo 1'})</span>` : "";
         let badgeVet = c.isVet ? ` <span class="badge-wildcard" style="background:#17a2b8; color:white;">VET</span>` : "";
-        let badgePara = c.isPara ? ` <span class="badge-wildcard" style="background:#6f42c1; color:white;">${c.gruppo||'Gruppo 1'}</span>` : "";
         
-        let saltoStr = getAltezzaSalto(c.cat, c.isVet, cls === 'Paragility');
-        let strTeam = c.teamName ? `<br><span style="color:var(--secondary); font-weight:bold; font-size:14px;">🏁 Team: ${c.teamName}</span>` : "";
-        let hSaltoTag = `<span style="color:var(--danger); font-weight:bold;">Salto: ${saltoStr}cm</span> | `;
+        let strTeam = c.teamName ? ` <span style="color:var(--secondary); font-weight:bold;">| 🏁 Team: ${c.teamName}</span>` : "";
         
-        let nomeCaneHtml = `<div style="font-weight:900; font-size:17px; color:var(--primary);">${c.cane} ${strWild}${badgePara}${badgeVet}</div><div style="font-size:13px; color:#6c757d; margin-top:2px;">${hSaltoTag}${c.conduttore} - ${c.club}${strTeam}</div>`;
+        // Conduttore e Cane stesso livello e grandezza, Club sotto più piccolo, nessun Salto: cm
+        let nomeCaneHtml = `<div style="font-weight:900; font-size:17px; color:var(--primary);">${c.conduttore} - ${c.cane} ${strWild}${badgePara}${badgeVet}</div><div style="font-size:13px; color:#6c757d; margin-top:2px;">${c.club || ''}${strTeam}</div>`;
         
         let bgRow = item.isOut ? "background-color: #fff5f5;" : (item.hasT ? "background-color: #f8fff9;" : "");
         let tempoFormattato = (item.hasT && !item.isOut) ? item.t.toFixed(2).replace('.',',') : "-";
@@ -507,6 +469,8 @@
         let grpFiltro = (cls === "Paragility" && document.getElementById('sel-gruppo')) ? document.getElementById('sel-gruppo').value : "TUTTI";
         
         let head = document.getElementById('tab-head');
+        let tbody = document.getElementById('tab-body');
+        
         if (isGame) {
             head.innerHTML = `<tr><th>Rank</th><th>Pett</th><th>Binomio / Club</th><th>Tempo</th><th>Score Punti</th><th>Esito</th></tr>`;
         } else {
@@ -514,12 +478,11 @@
         }
 
         let atletiGara = [];
-
         let divSel = document.getElementById('sel-div') ? document.getElementById('sel-div').value : "TUTTE";
         
-        // SEZIONE TRIATHLON (T3 STAFFETTA)
+        // SEZIONE TRIATHLON (T3 STAFFETTA A SQUADRE ESPLOSA COME NEL GESTIONALE)
         if (manche === "Triathlon T3" && appData.squadre) {
-            head.innerHTML = `<tr><th>Rank</th><th>Squadra & Div.</th><th>Conduttori a Podio</th><th colspan="2">Team Score</th><th>Stato</th></tr>`;
+            head.innerHTML = `<tr><th width="50">Rank</th><th>Squadra</th><th width="50">Ord.</th><th>Binomio</th><th width="100">Tempo</th><th width="80">Err</th><th width="80">Rif</th><th width="100">E/A</th></tr>`;
             let filteredTeams = appData.squadre.filter(sq => divSel === "TUTTE" || sq.divisione === divSel);
             let teams = filteredTeams.map(sq => {
                 let penT3 = 0, completi = 0;
@@ -528,88 +491,79 @@
                     let t = parseFloat(formattaTempo(d.tempo).replace(',','.')) || 0;
                     let isOut = ['E','A','DIS','ABS'].includes(d.esito);
                     if (t > 0 || isOut) {
-                        let c = appData.iscritti.find(x => String(x.pett) === String(m.pett));
-                        let cCls = "Senior";
-                        let alt = "Large";
-                        if (c) {
-                            cCls = c.classe || "Senior";
-                            alt = getCategoriaEffettiva(c, cCls);
-                        }
-                        let p_dati = (appData.percorsi[manche] && appData.percorsi[manche][cCls] && appData.percorsi[manche][cCls][alt]) ? appData.percorsi[manche][cCls][alt] : {};
-                        let tpsC = parseFloat((p_dati.tps || "45").replace(',', '.')) || 45.00;
-                        let timePen = t > tpsC ? (t - tpsC) : 0;
-                        penT3 += isOut ? 100 : (t + ((parseInt(d.err)||0)*5) + ((parseInt(d.rif)||0)*5) + timePen);
+                        penT3 += getTimePlusFaults(manche, m.pett, "Senior").val;
                         completi++;
                     } else {
                         penT3 += 100;
                     }
                 });
-                let ord = (appData.iscritti.find(x => String(x.pett) === String(sq.membri[0].pett)) || {}).ordini?.[manche] || 999;
+                let primoCane = appData.iscritti.find(x => String(x.pett) === String(sq.membri[0].pett)) || {};
+                let ord = (primoCane.ordini && primoCane.ordini[manche]) ? (parseInt(primoCane.ordini[manche]) || 999) : 999;
                 return { ...sq, scoreF: penT3, completato: completi === 3, ord: ord };
             });
             
             teams.sort((a,b) => {
+                if (divSel === "TUTTE" && a.divisione !== b.divisione && !a.completato && !b.completato) {
+                    return a.divisione === 'Small' ? -1 : 1;
+                }
                 if (!a.completato && b.completato) return 1;
                 if (a.completato && !b.completato) return -1;
-                if (!a.completato && !b.completato) {
-                    if (a.divisione !== b.divisione) return a.divisione === 'Small' ? -1 : 1;
-                    return a.ord - b.ord;
-                }
+                if (!a.completato && !b.completato) return a.ord - b.ord;
                 return a.scoreF - b.scoreF;
             });
             
             tbody.innerHTML = "";
             if (teams.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="6" align="center" style="padding: 30px; font-weight:bold; color:#6c757d;">Nessuna squadra iscritta.</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="8" align="center" style="padding: 30px; font-weight:bold; color:#6c757d;">Nessuna squadra iscritta in questa divisione.</td></tr>`;
                 return;
             }
+            
+            let htmlAll = "";
             teams.forEach((ts, idx) => {
-                let rBadge = ts.completato ? `<div class="rank-badge ${idx<3 ? 'rank-'+(idx+1) : ''}">${idx+1}</div>` : `<span style="font-size:11px;">Ord.${ts.ord}</span>`;
+                let rBadge = ts.completato ? `<div class="rank-badge ${idx<3 ? 'rank-'+(idx+1) : ''}">${idx+1}</div>` : `<div class="rank-badge">-</div>`;
                 let bgRow = ts.completato ? "background-color: #f8fff9;" : "background-color: #fff;";
-                let roasterHtml = "";
-                ts.membri.forEach(m => {
-                    let c = appData.iscritti.find(x => String(x.pett) === String(m.pett));
-                    if (c) {
-                        let isOut = false;
-                        let d = appData.risultati[manche] && appData.risultati[manche][m.pett] ? appData.risultati[manche][m.pett] : {};
-                        if (['E','A','DIS','ABS'].includes(d.esito)) isOut = true;
-                        let errStyle = isOut ? "color:#dc3545; text-decoration:line-through;" : "color:#495057;";
-                        roasterHtml += `<div style="font-size:13px; font-weight:bold; margin-bottom:2px; ${errStyle}">[${m.pett}] ${c.conduttore} - ${c.cane} (S: ${m.jumpUp || getCategoriaEffettiva(c, c.classe)})</div>`;
-                    }
+                let scoreText = ts.scoreF.toFixed(3).replace('.',',');
+                
+                let htmlCard = `<tr style="border-top:3px solid var(--primary); ${bgRow}">
+                    <td rowspan="3" style="vertical-align:middle; text-align:center;">${rBadge}</td>
+                    <td rowspan="3" style="vertical-align:top;">
+                        <b style="font-size:18px; color:var(--primary);">${ts.nome}</b>
+                        <span class="badge-wildcard" style="background:#0d6efd; color:white; margin-left:6px; border:none;">${ts.divisione.toUpperCase()}</span>
+                        <div style="background:#d1e7dd; padding:6px 10px; margin-top:8px; border-radius:4px; font-weight:bold; color:#0f5132;">Tot: <span style="font-size:18px;">${scoreText}</span></div>
+                    </td>`;
+                
+                ts.membri.forEach((m, i) => {
+                    let c = appData.iscritti.find(x => String(x.pett) === String(m.pett)) || { pett: m.pett, conduttore: "Sconosciuto", cane: "???", ordini: {} };
+                    let d = appData.risultati[manche] && appData.risultati[manche][m.pett] ? appData.risultati[manche][m.pett] : {tempo:"", err:"", rif:"", esito:""};
+                    let ordManche = (c.ordini && c.ordini[manche]) ? c.ordini[manche] : (ts.ord !== 999 ? ts.ord : '-');
+                    let isE = (d.esito === 'E' || d.esito === 'DIS');
+                    let isA = (d.esito === 'A' || d.esito === 'ABS');
+                    let esitoStr = isE ? "E" : (isA ? "A" : "-");
+                    let colorTxt = (isE || isA) ? "color:#dc3545;" : "color:var(--text);";
+                    
+                    let row = `<td><span class="badge-pos">${ordManche}</span></td>
+                               <td><div style="font-weight:bold; font-size:16px; ${colorTxt}">[${c.pett}] ${c.conduttore} - ${c.cane}</div><div style="font-size:12px; color:#6c757d;">${c.club || ''}</div></td>
+                               <td><b style="font-size:16px;">${formattaTempo(d.tempo) || "-"}</b></td>
+                               <td><b style="font-size:16px;">${d.err !== undefined && d.err !== "" ? d.err : "-"}</b></td>
+                               <td><b style="font-size:16px;">${d.rif !== undefined && d.rif !== "" ? d.rif : "-"}</b></td>
+                               <td><b style="font-size:18px; ${isE||isA ? 'color:#dc3545;':''}">${esitoStr}</b></td></tr>`;
+                    
+                    htmlCard += (i === 0) ? row : `<tr style="${bgRow}">${row}`;
                 });
-                if (ts.storico && ts.storico.length > 0) {
-                    roasterHtml += `<div style="font-size:11px; color:#dc3545; margin-top:4px;">+ Sostituiti: `;
-                    ts.storico.forEach(s => {
-                        let cs = appData.iscritti.find(x => String(x.pett) === String(s.pett));
-                        if(cs) roasterHtml += `[${s.pett}] ${cs.conduttore} `;
-                    });
-                    roasterHtml += `</div>`;
-                }
-                
-                let scoreText = ts.completato ? ts.scoreF.toFixed(3).replace('.',',') : "IN GARA";
-                let colorScore = ts.completato ? "var(--primary)" : "#6c757d";
-                let badgeStatus = ts.completato ? `<span style="background:var(--success); color:white; padding:4px 8px; border-radius:4px; font-weight:bold; font-size:12px;">CHIUSO</span>` : `<span style="background:var(--warning); color:black; padding:4px 8px; border-radius:4px; font-weight:bold; font-size:12px;">ATTESA</span>`;
-                
-                let htmlCard = `<tr style="${bgRow} border-top:3px solid var(--primary);">
-                    <td>${rBadge}</td>
-                    <td><b style="font-size:18px; color:var(--primary);">${ts.nome}</b><br><span class="badge-wildcard" style="background:#0d6efd; color:white; margin-left:0;">${ts.divisione.toUpperCase()}</span></td>
-                    <td>${roasterHtml}</td>
-                    <td colspan="2"><b style="font-size:22px; color:${colorScore};">${scoreText}</b></td>
-                    <td>${badgeStatus}</td>
-                </tr>`;
-                tbody.innerHTML += htmlCard;
+                htmlAll += htmlCard;
             });
+            tbody.innerHTML = htmlAll;
             return;
         }
         
-        // SEZIONE TRIATHLON (T1 / T2)
+        // SEZIONE TRIATHLON (T1 / T2) - Allineata al Gestionale (Senior e Junior insieme per Jump-Up)
         else if (manche.startsWith("Triathlon") && appData.squadre) {
             appData.squadre.forEach(sq => {
                 sq.membri.forEach(m => {
                     let c = appData.iscritti.find(x => String(x.pett) === String(m.pett));
                     if (c) {
-                        let jumpEffettivo = String(m.jumpUp || getCategoriaEffettiva(c, cls));
-                        if (jumpEffettivo === String(alt) && String(c.classe) === String(cls)) {
+                        let jumpEffettivo = String(m.jumpUp || c.cat || "Toy").trim();
+                        if (jumpEffettivo === String(alt).trim()) {
                             let clone = Object.assign({}, c);
                             clone.teamName = sq.nome;
                             atletiGara.push(clone);
@@ -618,7 +572,7 @@
                 });
             });
         } 
-        // GARE STANDARD E PARAGILITY
+        // GARE STANDARD E PARAGILITY - Allineata 1:1 con ottieniCaniPerGara del Gestionale
         else {
             atletiGara = appData.iscritti.filter(b => {
                 let catEff = getCategoriaEffettiva(b, cls);
@@ -640,7 +594,14 @@
             });
         }
 
-        let tbody = document.getElementById('tab-body');
+        // Pre-ordinamento identico a ottieniCaniPerGara del Gestionale
+        atletiGara.sort((a,b) => {
+            let oA = (a.ordini && a.ordini[manche]) ? (parseInt(a.ordini[manche]) || 999) : 999;
+            let oB = (b.ordini && b.ordini[manche]) ? (parseInt(b.ordini[manche]) || 999) : 999;
+            if (oA !== oB) return oA - oB;
+            return (parseInt(a.pett) || 999) - (parseInt(b.pett) || 999);
+        });
+
         if (atletiGara.length === 0) {
             tbody.innerHTML = `<tr><td colspan="8" align="center" style="padding: 30px; font-weight:bold; color:#6c757d;">Nessun atleta in questa categoria.</td></tr>`;
             return;
@@ -648,6 +609,8 @@
 
         let p_dati = (appData.percorsi[manche] && appData.percorsi[manche][cls] && appData.percorsi[manche][cls][alt]) ? appData.percorsi[manche][cls][alt] : {};
         let tpsC = parseFloat((p_dati.tps || "45").replace(',', '.')) || 45.00;
+        let isBiathlon = manche.includes("Biathlon");
+        let isTria = manche.includes("Triathlon");
 
         let listaElaborata = [];
         
@@ -656,7 +619,7 @@
             let floatT = parseFloat(formattaTempo(d.tempo).replace(',','.')) || 0;
             let hasT = (floatT > 0);
             let isOut = ['E','A','DIS','ABS'].includes(d.esito);
-            let ordStart = (c.ordini && c.ordini[manche]) ? c.ordini[manche] : 999;
+            let ordStart = (c.ordini && c.ordini[manche]) ? (parseInt(c.ordini[manche]) || 999) : 999;
             
             let scoreF = 0; let testoRisultato = "-";
             
@@ -666,6 +629,10 @@
                 if (isGame) {
                     scoreF = parseInt(d.punti)||0;
                     testoRisultato = scoreF.toString();
+                } else if (isBiathlon || isTria) {
+                    let timePen = (!isTria && floatT > tpsC) ? (floatT - tpsC) : 0;
+                    scoreF = floatT + ((parseInt(d.err)||0)*5) + ((parseInt(d.rif)||0)*5) + timePen;
+                    testoRisultato = scoreF.toFixed(3).replace('.', ',');
                 } else {
                     let timePen = floatT > tpsC ? (floatT - tpsC) : 0;
                     scoreF = ((parseInt(d.err)||0)*5) + ((parseInt(d.rif)||0)*5) + timePen;
@@ -687,7 +654,10 @@
             if(!a.isOut && b.isOut) return -1;
             if(!a.hasT && b.hasT) return 1;
             if(a.hasT && !b.hasT) return -1;
-            if(!a.hasT && !b.hasT) return a.ordStart - b.ordStart; 
+            if(!a.hasT && !b.hasT) {
+                if (a.ordStart !== b.ordStart) return a.ordStart - b.ordStart;
+                return (parseInt(a.caneOrig.pett) || 999) - (parseInt(b.caneOrig.pett) || 999);
+            }
             if (isGame) {
                 if (b.scoreF !== a.scoreF) return b.scoreF - a.scoreF;
                 return a.t - b.t;
@@ -699,8 +669,6 @@
 
         tbody.innerHTML = "";
 
-        // Se siamo in Paragility con TUTTI I GRUPPI selezionati:
-        // mostriamo le classifiche separate per ogni Gruppo (solo chi ha già corso) + l'ordine di partenza unificato per l'altezza!
         if (cls === "Paragility" && grpFiltro === "TUTTI") {
             let htmlOut = "";
             aParagility.forEach(grp => {
@@ -712,7 +680,7 @@
                     });
                 }
             });
-            let inAttesa = listaElaborata.filter(x => !x.hasT && !x.isOut).sort((a,b) => a.ordStart - b.ordStart);
+            let inAttesa = listaElaborata.filter(x => !x.hasT && !x.isOut).sort(sortFn);
             if (inAttesa.length > 0) {
                 htmlOut += `<tr style="background:#e9ecef;"><td colspan="8" style="font-weight:900; color:#495057; font-size:14px; padding:10px 15px;">⏳ ORDINE DI PARTENZA UNIFICATO — ALTEZZA: ${alt.toUpperCase()} (Tutti i Gruppi)</td></tr>`;
                 inAttesa.forEach((item, idx) => {
@@ -730,7 +698,6 @@
         }
     }
 
-    
     function calcolaDatiAllAroundCane(c, cls) {
         let p1 = 0, detStr = "", chiusoEntrambiGiri = false, penDueGiri = 0;
         if (cls === 'Beginner') {
@@ -757,12 +724,12 @@
         let qualDueGiri = chiusoEntrambiGiri ? getQualificaTesto(penDueGiri, "") : { testo: "ELIM", colore: "#ffffff", bg: "#dc3545" };
         let premiabile = (chiusoEntrambiGiri && qualDueGiri.testo !== "N.C.");
         
-        // Calcolo Punti Campionato fallback logic
         let pCamp = 0;
         if (appData.puntiCampionato && Array.isArray(appData.puntiCampionato)) {
             let cFull = pulisciNomeJS(c.conduttore); let dFull = pulisciNomeJS(c.cane);
+            let catOrig = (c.cat || "").toLowerCase();
             let catEff = getCategoriaEffettiva(c, cls).toLowerCase();
-            let bMatch = appData.puntiCampionato.find(p => pulisciNomeJS(p.cond) === cFull && pulisciNomeJS(p.cane) === dFull && p.categoria.toLowerCase() === cls.toLowerCase() && p.altezza.toLowerCase() === catEff);
+            let bMatch = appData.puntiCampionato.find(p => pulisciNomeJS(p.cond) === cFull && pulisciNomeJS(p.cane) === dFull && p.categoria.toLowerCase() === cls.toLowerCase() && (p.altezza.toLowerCase() === catOrig || p.altezza.toLowerCase() === catEff));
             if (bMatch) pCamp = parseFloat(bMatch.punti) || 0;
         }
         
@@ -810,7 +777,6 @@
 
         if (tipo === "🏆 All-Around") {
             head.innerHTML = `<tr><th>Rank</th><th>Pett</th><th>Binomio / Club</th><th>P. Gara</th><th>P. Campionato</th><th>TOTAL SCORE</th></tr>`;
-            let garaRif = (cls === 'Beginner') ? 'Jumping 1' : 'Agility';
             let atletiGara = appData.iscritti.filter(b => {
                 let catEff = getCategoriaEffettiva(b, cls);
                 let matchesAlt = String(catEff).trim() === String(alt).trim();
@@ -828,10 +794,11 @@
                 let rankCounter = 1;
                 cl.forEach(r => {
                     let wildBadge = r.isWildcard ? `<span class="badge-wildcard">J-FINALISSIMA</span>` : "";
+                    let badgePara = r.isPara ? ` <span class="badge-wildcard" style="background:#6f42c1; color:white;">PARAGILITY (${r.gruppo||'Gruppo 1'})</span>` : "";
+                    let badgeVet = r.isVet ? ` <span class="badge-wildcard" style="background:#17a2b8; color:white;">VET</span>` : "";
                     let rankDisplay = rankCounter++;
                     let isGiallo = (r.pCamp < 7 && !r.isGiudiceAmmesso && cls !== 'Beginner');
                     let rowStyle = isGiallo ? 'background-color: rgba(255, 193, 7, 0.25);' : '';
-                    let badgeVet = r.isVet ? ` <span class="badge-wildcard" style="background:#17a2b8; color:white;">VET</span>` : "";
                     
                     let rankClass = "rank-badge";
                     if(rankDisplay===1 && !isGiallo) rankClass += " rank-1";
@@ -841,7 +808,7 @@
                     tbody.innerHTML += `<tr style="${rowStyle}">
                         <td><div class="${rankClass}">${rankDisplay}</div></td>
                         <td><b style="font-size:18px;">${r.pett}</b></td>
-                        <td><b style="font-size:17px; color:var(--primary);">${r.cane}</b> ${wildBadge}${badgeVet}<br><small style="color:#6c757d;">${r.conduttore} - ${r.club}</small></td>
+                        <td><b style="font-size:17px; color:var(--primary);">${r.conduttore} - ${r.cane}</b> ${wildBadge}${badgePara}${badgeVet}<br><small style="color:#6c757d;">${r.club || ''}</small></td>
                         <td><b style="font-size:17px;">${r.p1.toFixed(2)}</b><br><small style="color:#6c757d;">${r.det}</small></td>
                         <td><b style="color:var(--success); font-size:17px;">+${r.pCamp.toFixed(2)}</b></td>
                         <td><b style="font-size:24px; color:var(--primary);">${r.totalone.toFixed(2)}</b></td>
@@ -884,6 +851,7 @@
                     if (cls === "Junior" && r.runsCount === 2 && r.strB1 !== "ELIM" && r.strB1 !== "ASS" && r.strB2 !== "ELIM" && r.strB2 !== "ASS" && rankDisplay !== "" && rankDisplay <= 3) {
                         wildBadge += ` <span class="badge-wildcard" style="background:var(--success); color:white;">🌟 TOP 3 WILDCARD</span>`;
                     }
+                    let badgePara = r.isPara ? ` <span class="badge-wildcard" style="background:#6f42c1; color:white;">PARAGILITY (${r.gruppo||'Gruppo 1'})</span>` : "";
                     let badgeVet = r.isVet ? ` <span class="badge-wildcard" style="background:#17a2b8; color:white;">VET</span>` : "";
                     let rankClass = "rank-badge";
                     if(rankDisplay===1) rankClass += " rank-1";
@@ -893,7 +861,7 @@
                     tbody.innerHTML += `<tr>
                         <td>${rankDisplay ? `<div class="${rankClass}">${rankDisplay}</div>` : "-"}</td>
                         <td><b style="font-size:18px;">${r.pett}</b></td>
-                        <td><b style="font-size:17px; color:var(--primary);">${r.cane}</b> ${wildBadge}${badgeVet}<br><small style="color:#6c757d;">${r.conduttore} - ${r.club}</small></td>
+                        <td><b style="font-size:17px; color:var(--primary);">${r.conduttore} - ${r.cane}</b> ${wildBadge}${badgePara}${badgeVet}<br><small style="color:#6c757d;">${r.club || ''}</small></td>
                         <td><b style="font-size:16px;">${r.strB1}</b></td>
                         <td><b style="font-size:16px;">${r.strB2}</b></td>
                         <td><b style="font-size:22px; color:var(--primary);">${r.text}</b></td>

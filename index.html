@@ -308,17 +308,20 @@
             "Beginner": ["Jumping 1", "Jumping 2", "🏆 All-Around"],
             "Paragility": ["Agility Open Paragility"]
         };
-        if (Array.isArray(liveManchesConfig)) {
-            let oldArr = liveManchesConfig;
+        if (!liveManchesConfig || typeof liveManchesConfig !== 'object' || Array.isArray(liveManchesConfig)) {
+            let oldArr = Array.isArray(liveManchesConfig) ? liveManchesConfig : ["TUTTE"];
             liveManchesConfig = { "Senior": [], "Junior": [], "Beginner": [], "Paragility": [] };
             ["Senior", "Junior", "Beginner", "Paragility"].forEach(c => {
                 if (oldArr.includes("TUTTE") || oldArr.includes(c)) {
                     liveManchesConfig[c] = fallbackCfg[c].filter(g => oldArr.includes("TUTTE") || oldArr.includes(g));
                 }
             });
-        } else if (!liveManchesConfig) {
-            liveManchesConfig = fallbackCfg;
         }
+        
+        // Safety check to ensure all keys exist
+        ["Senior", "Junior", "Beginner", "Paragility"].forEach(c => {
+            if (!liveManchesConfig[c]) liveManchesConfig[c] = fallbackCfg[c];
+        });
         
         // 1. GESTIONE CLASSI BASATA SU REGIA LIVE
         let selClasse = document.getElementById('sel-classe');
@@ -368,7 +371,7 @@
         let classificheClasse = isPara ? [] : (isBeg ? ["🏆 All-Around"] : ["🏆 All-Around", "🏆 Biathlon", "🏆 Triathlon"]);
         let fullList = manchsClasse.concat(classificheClasse);
         
-        let manchesAttive = fullList.filter(m => liveManchesConfig[cls].includes(m));
+        let manchesAttive = fullList.filter(m => liveManchesConfig[cls] && liveManchesConfig[cls].includes(m));
         
         if (!manchesAttive.includes(mancheAttuale) && manchesAttive.length > 0) {
             mancheAttuale = manchesAttive[0];

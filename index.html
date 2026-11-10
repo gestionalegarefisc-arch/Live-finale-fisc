@@ -14,7 +14,7 @@
             --danger: #dc3545; 
             --warning: #ffc107; 
         }
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: var(--bg); color: var(--text); margin: 0; padding: 0; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: var(--bg); color: var(--text); margin: 0; padding: 0; overflow-x: hidden; }
         
         /* HEADER */
         .header { background: var(--primary); color: white; padding: 15px 20px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 4px 15px rgba(0,0,0,0.3); position: sticky; top: 0; z-index: 1000; }
@@ -55,7 +55,7 @@
         .btn-manche.active { background: var(--primary); color: white; border-color: var(--primary); box-shadow: 0 4px 12px rgba(26,26,26,0.3); transform: translateY(-2px);}
 
         /* TABELLA */
-        .board-container { background: white; border-radius: 12px; box-shadow: 0 8px 25px rgba(0,0,0,0.08); overflow: hidden; border: 1px solid #e9ecef;}
+        .board-container { background: white; border-radius: 12px; box-shadow: 0 8px 25px rgba(0,0,0,0.08); overflow-x: auto; border: 1px solid #e9ecef;}
         table { width: 100%; border-collapse: collapse; min-width: 800px; }
         th { background: var(--primary); color: white; padding: 18px 15px; text-align: left; font-size: 14px; text-transform: uppercase; letter-spacing: 1px;}
         td { padding: 16px 15px; border-bottom: 1px solid #dee2e6; vertical-align: middle; font-size: 16px; }
@@ -460,12 +460,21 @@
         ["Senior", "Junior", "Beginner", "Paragility"].forEach(c => {
             if (!liveManchesConfig[c]) liveManchesConfig[c] = fallbackCfg[c];
         });
+
+        // Controlliamo se la T3 o la Classifica Tria sono attive nella Regia del Gestionale (di solito salvate sotto Senior o Junior)
+        let t3Active = (liveManchesConfig["Senior"] && liveManchesConfig["Senior"].includes("Triathlon T3")) || (liveManchesConfig["Junior"] && liveManchesConfig["Junior"].includes("Triathlon T3"));
+        let t3TrophyActive = (liveManchesConfig["Senior"] && liveManchesConfig["Senior"].includes("🏆 Triathlon")) || (liveManchesConfig["Junior"] && liveManchesConfig["Junior"].includes("🏆 Triathlon"));
         
         let selClasse = document.getElementById('sel-classe');
         let currentCls = selClasse.value;
         
         let classiPossibili = ["Senior", "Junior", "Beginner", "Paragility"];
         let classiAttive = classiPossibili.filter(c => liveManchesConfig[c] && liveManchesConfig[c].length > 0);
+        
+        // Aggiungiamo la voce "Triathlon" se la staffetta è attiva
+        if (t3Active || t3TrophyActive) {
+            classiAttive.push("Triathlon");
+        }
         
         if (classiAttive.length === 0) {
             document.getElementById('manche-container').innerHTML = "<div style='color:var(--danger); font-weight:bold; font-size:18px;'>Nessuna gara trasmessa dalla regia.</div>";
@@ -476,30 +485,45 @@
         
         selClasse.innerHTML = "";
         classiAttive.forEach(c => {
-            selClasse.innerHTML += `<option value="${c}" ${c === currentCls ? 'selected' : ''}>${c}</option>`;
+            let label = c === "Triathlon" ? "Triathlon (Staffetta Open)" : c;
+            selClasse.innerHTML += `<option value="${c}" ${c === currentCls ? 'selected' : ''}>${label}</option>`;
         });
         
         if (!classiAttive.includes(currentCls)) {
             selClasse.value = classiAttive[0];
         }
         let cls = selClasse.value;
+        
         let isPara = (cls === 'Paragility');
         let isBeg = (cls === 'Beginner');
+        let isTriaTeam = (cls === 'Triathlon');
 
-        let manchsClasse = isPara ? mParagility : (isBeg ? mBeginner : mStandard);
-        let classificheClasse = isPara ? [] : (isBeg ? ["🏆 All-Around"] : ["🏆 All-Around", "🏆 Biathlon", "🏆 Triathlon"]);
-        let fullList = manchsClasse.concat(classificheClasse);
-        
-        let manchesAttive = fullList.filter(m => liveManchesConfig[cls] && liveManchesConfig[cls].includes(m));
+        let manchesAttive = [];
+        if (isTriaTeam) {
+            if (t3Active) manchesAttive.push("Triathlon T3");
+            if (t3TrophyActive) manchesAttive.push("🏆 Triathlon");
+        } else {
+            let manchsClasse = isPara ? mParagility : (isBeg ? mBeginner : mStandard);
+            let classificheClasse = isPara ? [] : (isBeg ? ["🏆 All-Around"] : ["🏆 All-Around", "🏆 Biathlon", "🏆 Triathlon"]);
+            
+            // Rimuoviamo la T3 e il Trofeo Tria da Senior e Junior perché ora hanno la loro voce dedicata
+            if (cls === "Senior" || cls === "Junior") {
+                manchsClasse = manchsClasse.filter(m => m !== "Triathlon T3");
+                classificheClasse = classificheClasse.filter(m => m !== "🏆 Triathlon");
+            }
+            
+            let fullList = manchsClasse.concat(classificheClasse);
+            manchesAttive = fullList.filter(m => liveManchesConfig[cls] && liveManchesConfig[cls].includes(m));
+        }
         
         if (!manchesAttive.includes(mancheAttuale) && manchesAttive.length > 0) {
             mancheAttuale = manchesAttive[0];
         }
 
-        let isTriaTeams = (mancheAttuale === "Triathlon T3" || mancheAttuale === "🏆 Triathlon");
-        document.getElementById('box-sel-altezza').style.display = isTriaTeams ? 'none' : 'flex';
-        document.getElementById('box-sel-div').style.display = isTriaTeams ? 'flex' : 'none';
-        document.getElementById('box-sel-gruppo').style.display = (!isTriaTeams && isPara) ? 'flex' : 'none';
+        let isTriaTeamsManche = (mancheAttuale === "Triathlon T3" || mancheAttuale === "🏆 Triathlon");
+        document.getElementById('box-sel-altezza').style.display = isTriaTeamsManche ? 'none' : 'flex';
+        document.getElementById('box-sel-div').style.display = isTriaTeamsManche ? 'flex' : 'none';
+        document.getElementById('box-sel-gruppo').style.display = (!isTriaTeamsManche && isPara) ? 'flex' : 'none';
 
         let altSelect = document.getElementById('sel-altezza');
         let arrAltValide = isPara ? aParaAltezze : (isBeg ? aBeginner : aStandard);
@@ -527,7 +551,7 @@
             let activeCls = (m === mancheAttuale) ? "active" : "";
             let btnStyle = m.includes("🏆") ? (activeCls ? "background:#ffc107; color:black; border-color:#d39e00;" : "background:#fff3cd; color:#856404; border-color:#ffecb5;") : "";
             if (activeCls && m.includes("🏆")) activeCls += " trophy-active"; 
-            let imgH = m.includes("🏆") ? "" : `<img src="${LOGO_PULSANTI}" alt="FISC">`;
+            let imgH = m.includes("🏆") ? "" : `<img src="https://lh3.googleusercontent.com/d/1hr2ORv1F5L0v3bv5dBKRDR0IxIN1V04-" alt="FISC">`;
             containerBtn.innerHTML += `
                 <button class="btn-manche ${activeCls}" style="${btnStyle}" onclick="cambiaManche('${m}')">
                     ${imgH} ${m}
@@ -541,8 +565,7 @@
             disegnaClassifica(mancheAttuale, cls, altSelezionata);
         }
     }
-
-    function cambiaManche(nome) {
+function cambiaManche(nome) {
         mancheAttuale = nome;
         caricaDocumentiDaDatabase();
         aggiornaUI();

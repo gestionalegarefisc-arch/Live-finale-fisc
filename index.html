@@ -453,39 +453,36 @@
         ringManchesConfig = appData.ringManches || null;
         
         let fallbackCfg = {
-            "Senior": ["Agility", "Jumping", "Snooker", "Gambler", "Biathlon B1", "Biathlon B2", "Triathlon T1", "Triathlon T2", "Triathlon T3", "🏆 All-Around", "🏆 Biathlon", "🏆 Triathlon"],
-            "Junior": ["Agility", "Jumping", "Snooker", "Gambler", "Biathlon B1", "Biathlon B2", "Triathlon T1", "Triathlon T2", "Triathlon T3", "🏆 All-Around", "🏆 Biathlon", "🏆 Triathlon"],
+            "Senior": ["Agility", "Jumping", "Snooker", "Gambler", "Biathlon B1", "Biathlon B2", "🏆 All-Around", "🏆 Biathlon"],
+            "Junior": ["Agility", "Jumping", "Snooker", "Gambler", "Biathlon B1", "Biathlon B2", "🏆 All-Around", "🏆 Biathlon"],
             "Beginner": ["Jumping 1", "Jumping 2", "🏆 All-Around"],
-            "Paragility": ["Agility Open Paragility"]
+            "Paragility": ["Agility Open Paragility"],
+            "Triathlon": ["Triathlon T1", "Triathlon T2", "Triathlon T3", "🏆 Triathlon"]
         };
         if (!liveManchesConfig || typeof liveManchesConfig !== 'object' || Array.isArray(liveManchesConfig)) {
             let oldArr = Array.isArray(liveManchesConfig) ? liveManchesConfig : ["TUTTE"];
-            liveManchesConfig = { "Senior": [], "Junior": [], "Beginner": [], "Paragility": [] };
-            ["Senior", "Junior", "Beginner", "Paragility"].forEach(c => {
+            liveManchesConfig = { "Senior": [], "Junior": [], "Beginner": [], "Paragility": [], "Triathlon": [] };
+            ["Senior", "Junior", "Beginner", "Paragility", "Triathlon"].forEach(c => {
                 if (oldArr.includes("TUTTE") || oldArr.includes(c)) {
                     liveManchesConfig[c] = fallbackCfg[c].filter(g => oldArr.includes("TUTTE") || oldArr.includes(g));
                 }
             });
         }
         
-        ["Senior", "Junior", "Beginner", "Paragility"].forEach(c => {
+        ["Senior", "Junior", "Beginner", "Paragility", "Triathlon"].forEach(c => {
             if (!liveManchesConfig[c]) liveManchesConfig[c] = fallbackCfg[c];
         });
 
-        // Controlliamo se la T3 o la Classifica Tria sono attive nella Regia del Gestionale (di solito salvate sotto Senior o Junior)
-        let t3Active = (liveManchesConfig["Senior"] && liveManchesConfig["Senior"].includes("Triathlon T3")) || (liveManchesConfig["Junior"] && liveManchesConfig["Junior"].includes("Triathlon T3"));
-        let t3TrophyActive = (liveManchesConfig["Senior"] && liveManchesConfig["Senior"].includes("🏆 Triathlon")) || (liveManchesConfig["Junior"] && liveManchesConfig["Junior"].includes("🏆 Triathlon"));
-        
+        // Tria was merged into Senior/Junior in older states, recover it if missing
+        if ((liveManchesConfig["Senior"] && liveManchesConfig["Senior"].includes("Triathlon T3")) && (!liveManchesConfig["Triathlon"] || liveManchesConfig["Triathlon"].length === 0)) {
+            liveManchesConfig["Triathlon"] = ["Triathlon T1", "Triathlon T2", "Triathlon T3", "🏆 Triathlon"];
+        }
+
         let selClasse = document.getElementById('sel-classe');
         let currentCls = selClasse.value;
         
-        let classiPossibili = ["Senior", "Junior", "Beginner", "Paragility"];
+        let classiPossibili = ["Senior", "Junior", "Beginner", "Paragility", "Triathlon"];
         let classiAttive = classiPossibili.filter(c => liveManchesConfig[c] && liveManchesConfig[c].length > 0);
-        
-        // Aggiungiamo la voce "Triathlon" se la staffetta è attiva
-        if (t3Active || t3TrophyActive) {
-            classiAttive.push("Triathlon");
-        }
         
         if (classiAttive.length === 0) {
             document.getElementById('manche-container').innerHTML = "<div style='color:var(--danger); font-weight:bold; font-size:18px;'>Nessuna gara trasmessa dalla regia.</div>";
@@ -509,23 +506,7 @@
         let isBeg = (cls === 'Beginner');
         let isTriaTeam = (cls === 'Triathlon');
 
-        let manchesAttive = [];
-        if (isTriaTeam) {
-            if (t3Active) manchesAttive.push("Triathlon T3");
-            if (t3TrophyActive) manchesAttive.push("🏆 Triathlon");
-        } else {
-            let manchsClasse = isPara ? mParagility : (isBeg ? mBeginner : mStandard);
-            let classificheClasse = isPara ? [] : (isBeg ? ["🏆 All-Around"] : ["🏆 All-Around", "🏆 Biathlon", "🏆 Triathlon"]);
-            
-            // Rimuoviamo la T3 e il Trofeo Tria da Senior e Junior perché ora hanno la loro voce dedicata
-            if (cls === "Senior" || cls === "Junior") {
-                manchsClasse = manchsClasse.filter(m => m !== "Triathlon T3");
-                classificheClasse = classificheClasse.filter(m => m !== "🏆 Triathlon");
-            }
-            
-            let fullList = manchsClasse.concat(classificheClasse);
-            manchesAttive = fullList.filter(m => liveManchesConfig[cls] && liveManchesConfig[cls].includes(m));
-        }
+        let manchesAttive = liveManchesConfig[cls] || [];
         
         if (!manchesAttive.includes(mancheAttuale) && manchesAttive.length > 0) {
             mancheAttuale = manchesAttive[0];

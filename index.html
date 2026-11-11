@@ -323,7 +323,7 @@
     const LOGO_PULSANTI = "https://lh3.googleusercontent.com/d/1hr2ORv1F5L0v3bv5dBKRDR0IxIN1V04-";
 
     let appData = null;
-    let mancheAttuale = "Agility";
+    let mancheAttuale = "Agility (All-Around)";
     let inRichiesta = false;
     let ringManchesConfig = null;
     
@@ -643,7 +643,7 @@ function cambiaManche(nome) {
     }
 
     function disegnaClassifica(manche, cls, alt) {
-        const isGame = (manche === "Snooker" || manche === "Gambler");
+        const isGame = (manche === "Snooker (All-Around)" || manche === "Gambler (All-Around)");
         let grpFiltro = (cls === "Paragility" && document.getElementById('sel-gruppo')) ? document.getElementById('sel-gruppo').value : "TUTTI";
         
         let head = document.getElementById('tab-head');

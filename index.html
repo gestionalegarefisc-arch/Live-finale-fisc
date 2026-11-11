@@ -327,7 +327,7 @@
     let inRichiesta = false;
     let ringManchesConfig = null;
     
-    const mStandard = ["Agility", "Jumping", "Snooker", "Gambler", "Biathlon B1", "Biathlon B2", "Triathlon T1", "Triathlon T2", "Triathlon T3"];
+    const mStandard = ["Agility (All-Around)", "Jumping (All-Around)", "Snooker (All-Around)", "Gambler (All-Around)", "Biathlon B1 (Agility)", "Biathlon B2 (Jumping)", "Triathlon T1", "Triathlon T2", "Triathlon T3"];
     const mBeginner = ["Jumping 1", "Jumping 2"];
     const mParagility = ["Agility Open Paragility"];
     const aStandard = ["Toy", "Mini", "Medium", "Large", "Maxi"];
@@ -453,8 +453,8 @@
         ringManchesConfig = appData.ringManches || null;
         
         let fallbackCfg = {
-            "Senior": ["Agility", "Jumping", "Snooker", "Gambler", "Biathlon B1", "Biathlon B2", "🏆 All-Around", "🏆 Biathlon"],
-            "Junior": ["Agility", "Jumping", "Snooker", "Gambler", "Biathlon B1", "Biathlon B2", "🏆 All-Around", "🏆 Biathlon"],
+            "Senior": ["Agility (All-Around)", "Jumping (All-Around)", "Snooker (All-Around)", "Gambler (All-Around)", "Biathlon B1 (Agility)", "Biathlon B2 (Jumping)", "🏆 All-Around", "🏆 Biathlon"],
+            "Junior": ["Agility (All-Around)", "Jumping (All-Around)", "Snooker (All-Around)", "Gambler (All-Around)", "Biathlon B1 (Agility)", "Biathlon B2 (Jumping)", "🏆 All-Around", "🏆 Biathlon"],
             "Beginner": ["Jumping 1", "Jumping 2", "🏆 All-Around"],
             "Paragility": ["Agility Open Paragility"],
             "Triathlon": ["Triathlon T1", "Triathlon T2", "Triathlon T3", "🏆 Triathlon"]
@@ -473,8 +473,8 @@
             if (!liveManchesConfig[c]) liveManchesConfig[c] = fallbackCfg[c];
         });
 
-        // Tria was merged into Senior/Junior in older states, recover it if missing
-        if ((liveManchesConfig["Senior"] && liveManchesConfig["Senior"].includes("Triathlon T3")) && (!liveManchesConfig["Triathlon"] || liveManchesConfig["Triathlon"].length === 0)) {
+        // Se la regia sta ancora usando un salvataggio vecchio dove la T3 era dentro Senior, lo "salviamo"
+        if (liveManchesConfig["Senior"] && liveManchesConfig["Senior"].includes("Triathlon T3") && (!liveManchesConfig["Triathlon"] || liveManchesConfig["Triathlon"].length === 0)) {
             liveManchesConfig["Triathlon"] = ["Triathlon T1", "Triathlon T2", "Triathlon T3", "🏆 Triathlon"];
         }
 
@@ -890,14 +890,14 @@ function cambiaManche(nome) {
             p1 = pJ1 + pJ2;
             detStr = `J1:${pJ1.toFixed(2)} J2:${pJ2.toFixed(2)}`;
         } else {
-            let ag = getTimePlusFaults('Agility', c.pett, cls);
-            let jp = getTimePlusFaults('Jumping', c.pett, cls);
+            let ag = getTimePlusFaults('Agility (All-Around)', c.pett, cls);
+            let jp = getTimePlusFaults('Jumping (All-Around)', c.pett, cls);
             chiusoEntrambiGiri = (!ag.dq && !jp.dq);
             penDueGiri = ag.pen + jp.pen;
             let pAg = ag.dq || ag.val >= 100 ? 0 : Math.max(0, 100 - ag.val);
             let pJp = jp.dq || jp.val >= 100 ? 0 : Math.max(0, 100 - jp.val);
-            let pSn = parseFloat((appData.risultati['Snooker'] && appData.risultati['Snooker'][c.pett] && !['E','A','DIS','ABS'].includes(appData.risultati['Snooker'][c.pett].esito)) ? appData.risultati['Snooker'][c.pett].punti : 0) || 0;
-            let pGa = parseFloat((appData.risultati['Gambler'] && appData.risultati['Gambler'][c.pett] && !['E','A','DIS','ABS'].includes(appData.risultati['Gambler'][c.pett].esito)) ? appData.risultati['Gambler'][c.pett].punti : 0) || 0;
+            let pSn = parseFloat((appData.risultati['Snooker (All-Around)'] && appData.risultati['Snooker (All-Around)'][c.pett] && !['E','A','DIS','ABS'].includes(appData.risultati['Snooker (All-Around)'][c.pett].esito)) ? appData.risultati['Snooker (All-Around)'][c.pett].punti : 0) || 0;
+            let pGa = parseFloat((appData.risultati['Gambler (All-Around)'] && appData.risultati['Gambler (All-Around)'][c.pett] && !['E','A','DIS','ABS'].includes(appData.risultati['Gambler (All-Around)'][c.pett].esito)) ? appData.risultati['Gambler (All-Around)'][c.pett].punti : 0) || 0;
             p1 = pAg + pJp + pSn + pGa;
             detStr = `A:${pAg.toFixed(2)} J:${pJp.toFixed(2)} S:${pSn} G:${pGa}`;
         }
@@ -1004,8 +1004,8 @@ function cambiaManche(nome) {
             });
             
             let cl = atletiGara.map(c => {
-                let b1 = getTimePlusFaults('Biathlon B1', c.pett, cls);
-                let b2 = getTimePlusFaults('Biathlon B2', c.pett, cls);
+                let b1 = getTimePlusFaults('Biathlon B1 (Agility)', c.pett, cls);
+                let b2 = getTimePlusFaults('Biathlon B2 (Jumping)', c.pett, cls);
                 let strB1 = !b1.hasRun ? "" : (b1.isOut ? ((b1.esito === 'A' || b1.esito === 'ABS') ? "ASS" : "ELIM") : b1.val.toFixed(3).replace('.',','));
                 let strB2 = !b2.hasRun ? "" : (b2.isOut ? ((b2.esito === 'A' || b2.esito === 'ABS') ? "ASS" : "ELIM") : b2.val.toFixed(3).replace('.',','));
                 let runsCount = (b1.hasRun ? 1 : 0) + (b2.hasRun ? 1 : 0);

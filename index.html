@@ -489,7 +489,7 @@
         
         if (classiAttive.length === 0) {
             document.getElementById('manche-container').innerHTML = "<div style='color:var(--danger); font-weight:bold; font-size:18px;'>Nessuna gara trasmessa dalla regia.</div>";
-            document.getElementById('tab-body').innerHTML = `<tr><td colspan="8" align="center" style="padding: 30px; font-weight:bold; color:#6c757d;">In attesa di dati dalla regia...</td></tr>`;
+            document.getElementById('tab-body').innerHTML = `<tr><td colspan="9" align="center" style="padding: 30px; font-weight:bold; color:#6c757d;">In attesa di dati dalla regia...</td></tr>`;
             selClasse.innerHTML = "<option value=''>-</option>";
             return;
         }
@@ -593,8 +593,6 @@ function cambiaManche(nome) {
             if (rankNum === 1) rankClass += " rank-1";
             if (rankNum === 2) rankClass += " rank-2";
             if (rankNum === 3) rankClass += " rank-3";
-        } else if (!item.hasT && !item.isOut) {
-            rankText = `<span style="font-size:11px; font-weight:normal;">Ord.${item.ordStart}</span>`;
         }
 
         let strWild = c.isWildcard ? `<span class="badge-wildcard">J-FINALISSIMA</span>` : "";
@@ -608,8 +606,10 @@ function cambiaManche(nome) {
         let bgRow = item.isOut ? "background-color: #fff5f5;" : (item.hasT ? "background-color: #f8fff9;" : "");
         let tempoFormattato = (item.hasT && !item.isOut) ? item.t.toFixed(2).replace('.',',') : "-";
         
+        let ordBadge = `<span class="badge-pos" style="background:#198754; color:white; width:35px; height:35px; font-size:16px;">${item.ordStart !== 999 ? item.ordStart : '-'}</span>`;
         let tr = `<tr style="${bgRow}">
             <td><div class="${rankClass}">${rankText}</div></td>
+            <td style="text-align:center;">${ordBadge}</td>
             <td><b style="font-size:18px;">${c.pett}</b></td>
             <td>${nomeCaneHtml}</td>
             <td><b style="font-size:17px;">${tempoFormattato}</b></td>
@@ -653,9 +653,9 @@ function cambiaManche(nome) {
         let tbody = document.getElementById('tab-body');
         
         if (isGame) {
-            head.innerHTML = `<tr><th>Rank</th><th>Pett</th><th>Binomio / Club</th><th>Tempo</th><th>Score Punti</th><th>Esito</th></tr>`;
+            head.innerHTML = `<tr><th>Rank</th><th width="55" style="text-align:center;">Ord.</th><th>Pett</th><th>Binomio / Club</th><th>Tempo</th><th>Score Punti</th><th>Esito</th></tr>`;
         } else {
-            head.innerHTML = `<tr><th>Rank</th><th>Pett</th><th>Binomio / Club</th><th>Tempo</th><th>Err</th><th>Rif</th><th>Pen. Totali</th><th>Qual.</th></tr>`;
+            head.innerHTML = `<tr><th>Rank</th><th width="55" style="text-align:center;">Ord.</th><th>Pett</th><th>Binomio / Club</th><th>Tempo</th><th>Err</th><th>Rif</th><th>Pen. Totali</th><th>Qual.</th></tr>`;
         }
 
         let atletiGara = [];
@@ -663,7 +663,7 @@ function cambiaManche(nome) {
         
         // SEZIONE TRIATHLON (T3 STAFFETTA A SQUADRE ESPLOSA IDENTICA AL GESTIONALE)
         if (manche === "Triathlon T3" && appData.squadre) {
-            head.innerHTML = `<tr><th width="50">Rank</th><th>Squadra</th><th width="50">Ord.</th><th>Binomio</th><th width="100">Tempo</th><th width="80">Err</th><th width="80">Rif</th><th width="100">E/A</th></tr>`;
+            head.innerHTML = `<tr><th width="50">Rank</th><th width="55" style="text-align:center;">Ord.</th><th>Squadra</th><th>Binomio</th><th width="100">Tempo</th><th width="80">Err</th><th width="80">Rif</th><th width="100">E/A</th></tr>`;
             let filteredTeams = [...appData.squadre].filter(sq => divSel === "TUTTE" || sq.divisione === divSel);
             
             let teamScores = filteredTeams.map(sq => {
@@ -698,7 +698,7 @@ function cambiaManche(nome) {
             
             tbody.innerHTML = "";
             if (teamScores.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="8" align="center" style="padding: 30px; font-weight:bold; color:#6c757d;">Nessuna squadra iscritta in questa divisione.</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="9" align="center" style="padding: 30px; font-weight:bold; color:#6c757d;">Nessuna squadra iscritta in questa divisione.</td></tr>`;
                 return;
             }
             
@@ -788,7 +788,7 @@ function cambiaManche(nome) {
         });
 
         if (atletiGara.length === 0) {
-            tbody.innerHTML = `<tr><td colspan="8" align="center" style="padding: 30px; font-weight:bold; color:#6c757d;">Nessun atleta in questa categoria.</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="9" align="center" style="padding: 30px; font-weight:bold; color:#6c757d;">Nessun atleta in questa categoria.</td></tr>`;
             return;
         }
 
@@ -859,7 +859,7 @@ function cambiaManche(nome) {
             aParagility.forEach(grp => {
                 let cGrp = listaElaborata.filter(x => x.gruppo === grp && (x.hasT || x.isOut)).sort(sortFn);
                 if (cGrp.length > 0) {
-                    htmlOut += `<tr style="background:#e2d9f3;"><td colspan="8" style="font-weight:900; color:#4a2b82; font-size:15px; padding:10px 15px;">🏆 CLASSIFICA ${grp.toUpperCase()} — ALTEZZA: ${alt.toUpperCase()}</td></tr>`;
+                    htmlOut += `<tr style="background:#e2d9f3;"><td colspan="9" style="font-weight:900; color:#4a2b82; font-size:15px; padding:10px 15px;">🏆 CLASSIFICA ${grp.toUpperCase()} — ALTEZZA: ${alt.toUpperCase()}</td></tr>`;
                     cGrp.forEach((item, idx) => {
                         htmlOut += creaRigaTabellaHTML(item, idx + 1, isGame, cls);
                     });
@@ -867,7 +867,7 @@ function cambiaManche(nome) {
             });
             let inAttesa = listaElaborata.filter(x => !x.hasT && !x.isOut).sort(sortFn);
             if (inAttesa.length > 0) {
-                htmlOut += `<tr style="background:#e9ecef;"><td colspan="8" style="font-weight:900; color:#495057; font-size:14px; padding:10px 15px;">⏳ ORDINE DI PARTENZA UNIFICATO — ALTEZZA: ${alt.toUpperCase()} (Tutti i Gruppi)</td></tr>`;
+                htmlOut += `<tr style="background:#e9ecef;"><td colspan="9" style="font-weight:900; color:#495057; font-size:14px; padding:10px 15px;">⏳ ORDINE DI PARTENZA UNIFICATO — ALTEZZA: ${alt.toUpperCase()} (Tutti i Gruppi)</td></tr>`;
                 inAttesa.forEach((item, idx) => {
                     htmlOut += creaRigaTabellaHTML(item, idx + 1, isGame, cls);
                 });

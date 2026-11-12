@@ -6,13 +6,14 @@
     <title>Finale di Agility FISC 2026 - Live Scoreboard</title>
     <style>
         :root { 
-            --primary: #1a1a1a;
+            --primary: #004085; /* Royal Blue / Navy / FISC Blue */
             --secondary: #198754; 
             --bg: #f8f9fa; 
             --text: #212529; 
             --success: #198754; 
             --danger: #dc3545; 
             --warning: #ffc107; 
+            --active-btn: #0d6efd; /* Un blu più brillante per evidenziare la manche attiva */
         }
         html { background-color: var(--primary); width: 100vw; overflow-x: hidden; }
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: var(--primary); color: var(--text); margin: 0; padding: 0; width: 100%; overflow-x: hidden; box-sizing: border-box; }
@@ -53,7 +54,7 @@
         }
         .btn-manche img { height: 26px; border-radius: 50%; } 
         .btn-manche:hover { background: #e9ecef; transform: translateY(-2px); box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
-        .btn-manche.active { background: var(--primary); color: white; border-color: var(--primary); box-shadow: 0 4px 12px rgba(26,26,26,0.3); transform: translateY(-2px);}
+        .btn-manche.active { background: var(--active-btn); color: white; border-color: var(--active-btn); box-shadow: 0 4px 12px rgba(13, 110, 253, 0.4); transform: translateY(-2px);}
 
         /* TABELLA */
         .board-container { background: white; border-radius: 12px; box-shadow: 0 8px 25px rgba(0,0,0,0.08); width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; border: 1px solid #e9ecef; box-sizing: border-box; }
@@ -125,10 +126,12 @@
         </div>
         <div class="container" style="margin-top:30px; flex:1; display:flex; flex-direction:column;">
             <div style="display:flex; gap:20px; flex-wrap:wrap; margin-bottom:20px;">
-                <button class="btn-manche active" style="flex:1; font-size:18px; padding:15px; background:white; color:var(--primary); border:2px solid #ced4da;" id="btn-doc-snk-br" onclick="mostraDoc('snk-br', this)">📄 Briefing Snooker</button>
-                <button class="btn-manche" style="flex:1; font-size:18px; padding:15px; background:white; color:var(--primary); border:2px solid #ced4da;" id="btn-doc-snk-pr" onclick="mostraDoc('snk-pr', this)">🗺️ Percorso Snooker</button>
-                <button class="btn-manche" style="flex:1; font-size:18px; padding:15px; background:white; color:var(--primary); border:2px solid #ced4da;" id="btn-doc-gam-br" onclick="mostraDoc('gam-br', this)">📄 Briefing Gambler</button>
-                <button class="btn-manche" style="flex:1; font-size:18px; padding:15px; background:white; color:var(--primary); border:2px solid #ced4da;" id="btn-doc-gam-pr" onclick="mostraDoc('gam-pr', this)">🗺️ Percorso Gambler</button>
+                <button class="btn-manche active" style="flex:1; font-size:16px; padding:12px; background:white; color:var(--primary); border:2px solid #ced4da;" id="btn-doc-snk-br" onclick="mostraDoc('snk-br', this)">📄 Briefing Snooker</button>
+                <button class="btn-manche" style="flex:1; font-size:16px; padding:12px; background:white; color:var(--primary); border:2px solid #ced4da;" id="btn-doc-snk-pr" onclick="mostraDoc('snk-pr', this)">🗺️ Percorso Snooker</button>
+                <button class="btn-manche" style="flex:1; font-size:16px; padding:12px; background:white; color:var(--primary); border:2px solid #ced4da;" id="btn-doc-gam-br" onclick="mostraDoc('gam-br', this)">📄 Briefing Gambler</button>
+                <button class="btn-manche" style="flex:1; font-size:16px; padding:12px; background:white; color:var(--primary); border:2px solid #ced4da;" id="btn-doc-gam-pr" onclick="mostraDoc('gam-pr', this)">🗺️ Percorso Gambler</button>
+                <button class="btn-manche" style="flex:1; font-size:16px; padding:12px; background:white; color:var(--primary); border:2px solid #ced4da;" id="btn-doc-stf-br" onclick="mostraDoc('stf-br', this)">📄 Briefing Staffetta</button>
+                <button class="btn-manche" style="flex:1; font-size:16px; padding:12px; background:white; color:var(--primary); border:2px solid #ced4da;" id="btn-doc-stf-pr" onclick="mostraDoc('stf-pr', this)">🗺️ Percorso Staffetta</button>
             </div>
             <div id="doc-render-area" style="flex:1; background:white; border-radius:10px; border:2px solid #ced4da; overflow:hidden; min-height:600px; display:flex; align-items:center; justify-content:center; position:relative; flex-direction:column; padding:10px;">
                 <h3 id="doc-placeholder" style="color:#6c757d; text-align:center;">Seleziona un documento dai tasti qui sopra</h3>
@@ -709,6 +712,9 @@ function cambiaManche(nome) {
                 
                 let tr1 = `<tr style="border-top:3px solid #004085; background:#f8f9fa;">
                     <td rowspan="3" style="vertical-align:middle; text-align:center;">${rBadge}</td>
+                    <td rowspan="3" style="vertical-align:middle; text-align:center;">
+                        <span class="badge-pos" style="background:#198754; color:white; width:35px; height:35px; font-size:16px;">${ts.ord !== 999 ? ts.ord : '-'}</span>
+                    </td>
                     <td rowspan="3" style="vertical-align:top;">
                         <b>${sq.nome}</b><br>
                         <div style="background:#d1e7dd; padding:5px 8px; margin-top:5px; border-radius:4px; font-weight:bold;">Tot: <span style="font-size:18px;">${scoreText}</span></div>
@@ -723,8 +729,7 @@ function cambiaManche(nome) {
                     let esitoStr = isE ? "E" : (isA ? "A" : "-");
                     let colorTxt = (isE || isA) ? "color:#dc3545;" : "";
                     
-                    let row = `<td><span class="badge-pos" style="background:#004085; color:white;">${ordManche}</span></td>
-                               <td style="${colorTxt}"><b>[${c.pett}] ${c.conduttore} - ${c.cane}</b></td>
+                    let row = `<td style="${colorTxt}"><b>[${c.pett}] ${c.conduttore} - ${c.cane}</b></td>
                                <td><b>${formattaTempo(d.tempo) || "-"}</b></td>
                                <td><b>${d.err !== undefined && d.err !== "" ? d.err : "-"}</b></td>
                                <td><b>${d.rif !== undefined && d.rif !== "" ? d.rif : "-"}</b></td>

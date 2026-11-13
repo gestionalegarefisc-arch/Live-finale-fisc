@@ -704,7 +704,7 @@ function cambiaManche(nome) {
             }
             
             let htmlAll = "";
-            teamScores.forEach(ts => {
+            teamScores.forEach((ts, index) => {
                 let sq = ts.sq;
                 let sortedDiv = teamScores.filter(x => x.sq.divisione === sq.divisione && x.completato).sort((a,b) => a.score - b.score);
                 let rankNum = ts.completato ? (sortedDiv.findIndex(x => x.sq.id === sq.id) + 1) : null;
@@ -714,7 +714,7 @@ function cambiaManche(nome) {
                 let tr1 = `<tr style="border-top:3px solid #004085; background:#f8f9fa;">
                     <td rowspan="3" style="vertical-align:middle; text-align:center;">${rBadge}</td>
                     <td rowspan="3" style="vertical-align:middle; text-align:center;">
-                        <span class="badge-pos" style="background:#198754; color:white; width:35px; height:35px; font-size:16px;">${ts.ord !== 999 ? ts.ord : '-'}</span>
+                        <span class="badge-pos" style="background:#198754; color:white; width:35px; height:35px; font-size:16px;">${index + 1}</span>
                     </td>
                     <td rowspan="3" style="vertical-align:top;">
                         <b>${sq.nome}</b><br>

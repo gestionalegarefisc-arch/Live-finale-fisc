@@ -58,11 +58,12 @@
 
         /* TABELLA */
         .board-container { background: white; border-radius: 12px; box-shadow: 0 8px 25px rgba(0,0,0,0.08); width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; border: 1px solid #e9ecef; box-sizing: border-box; }
-        table { width: 100%; border-collapse: collapse; min-width: 800px; }
+        table { width: 100%; border-collapse: collapse; min-width: 800px; color: #212529; }
         th { background: var(--primary); color: white; padding: 18px 15px; text-align: left; font-size: 14px; text-transform: uppercase; letter-spacing: 1px;}
         td { padding: 16px 15px; border-bottom: 1px solid #dee2e6; vertical-align: middle; font-size: 16px; }
         tr:last-child td { border-bottom: none; }
         tr:hover td { background-color: #f8f9fa; }
+        tbody tr { color: #212529 !important; }
         
         .rank-badge { width: 34px; height: 34px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-weight: 900; background: #e9ecef; color: #495057; font-size: 15px;}
         .rank-1 { background: #ffd700; color: #000; box-shadow: 0 0 15px rgba(255,215,0,0.6); transform: scale(1.1);}
@@ -723,7 +724,6 @@ function cambiaManche(nome) {
                 sq.membri.forEach((m, i) => {
                     let c = appData.iscritti.find(x => String(x.pett) === String(m.pett)) || { pett: m.pett, conduttore: "Sconosciuto", cane: "Eliminato", ordini: {} };
                     let d = appData.risultati[manche] && appData.risultati[manche][m.pett] ? appData.risultati[manche][m.pett] : {tempo:"", err:"", rif:"", esito:""};
-                    let ordManche = (c.ordini && c.ordini[manche]) ? c.ordini[manche] : (ts.ord !== 999 ? ts.ord : '-');
                     let isE = (d.esito === 'E' || d.esito === 'DIS');
                     let isA = (d.esito === 'A' || d.esito === 'ABS');
                     let esitoStr = isE ? "E" : (isA ? "A" : "-");
@@ -912,10 +912,34 @@ function cambiaManche(nome) {
         let pCamp = 0;
         if (appData.puntiCampionato && Array.isArray(appData.puntiCampionato)) {
             let cFull = pulisciNomeJS(c.conduttore); let dFull = pulisciNomeJS(c.cane);
+            let cWords = parolePuliteJS(c.conduttore); let dWords = parolePuliteJS(c.cane);
             let catOrig = (c.cat || "").toLowerCase();
             let catEff = getCategoriaEffettiva(c, cls).toLowerCase();
-            let bMatch = appData.puntiCampionato.find(p => pulisciNomeJS(p.cond) === cFull && pulisciNomeJS(p.cane) === dFull && p.categoria.toLowerCase() === cls.toLowerCase() && (p.altezza.toLowerCase() === catOrig || p.altezza.toLowerCase() === catEff));
-            if (bMatch) pCamp = parseFloat(bMatch.punti) || 0;
+            
+            let bestMatch = null;
+            let bestScore = -1;
+            
+            appData.puntiCampionato.forEach(p => {
+                let csvCondFull = pulisciNomeJS(p.cond), csvCaneFull = pulisciNomeJS(p.cane);
+                let csvCondWords = parolePuliteJS(p.cond), csvCaneWords = parolePuliteJS(p.cane);
+                let csvCls = (p.categoria || "").toString().trim().toLowerCase();
+                let csvAlt = (p.altezza || "").toString().trim().toLowerCase();
+                
+                if (csvCls && csvCls !== cls.toLowerCase()) return;
+                if (csvAlt && csvAlt !== catOrig && csvAlt !== catEff) return;
+                
+                let condMatch = (cFull === csvCondFull) || (cWords.length > 0 && cWords.every(w => csvCondWords.includes(w))) || (csvCondWords.length > 0 && csvCondWords.every(w => cWords.includes(w)));
+                if (!condMatch) return;
+                
+                let caneMatch = (dFull === csvCaneFull) || (dWords.length > 0 && csvCaneWords.length > 0 && dWords[0] === csvCaneWords[0]) || (dWords.length > 0 && dWords.every(w => csvCaneWords.includes(w)));
+                if (!caneMatch) return;
+                
+                let score = 10;
+                if (cFull === csvCondFull) score += 5;
+                if (dFull === csvCaneFull) score += 5;
+                if (score > bestScore) { bestScore = score; bestMatch = p; }
+            });
+            if (bestMatch) pCamp = parseFloat(bestMatch.punti) || 0;
         }
         
         let totalone = p1 + pCamp;
@@ -923,6 +947,10 @@ function cambiaManche(nome) {
     }
 
     function pulisciNomeJS(str) { return str ? str.toString().toLowerCase().replace(/[^a-z0-9]/g, '') : ""; }
+    function parolePuliteJS(str) { 
+        if (!str) return []; 
+        return str.toString().normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().split(/[^a-z0-9]+/).filter(Boolean); 
+    }
     
     function getTimePlusFaults(m, p, forcedClass = null) { 
         if (!appData.risultati[m]) return {dq: true, val: 100, pen: 100, hasRun: false, isOut: false, esito: ""};

@@ -145,6 +145,7 @@
     <div class="header">
         <div class="header-left">
             <button onclick="tornaMenu()" style="background:white; color:var(--primary); border:none; padding:8px 15px; border-radius:5px; font-weight:bold; cursor:pointer; margin-right:10px;">⬅ MENU</button>
+            <button id="btn-sync-live" onclick="forzaAggiornamentoLive()" style="background: var(--warning); color: black; border: none; padding: 8px 15px; border-radius: 5px; font-weight: bold; cursor: pointer; margin-right:10px; box-shadow: 0 2px 5px rgba(0,0,0,0.2);">🔄 AGGIORNA</button>
             <div class="header-logos">
         <div class="header-left">
             <div class="header-logos">
@@ -249,6 +250,14 @@
         }
     }
     
+    
+    function forzaAggiornamentoLive() {
+        let btn = document.getElementById('btn-sync-live');
+        if (btn) btn.innerText = "⏳ SCARICO...";
+        richiediDati(); // Forza il fetch dal database
+        setTimeout(() => { if (btn) btn.innerText = "🔄 AGGIORNA"; }, 2500);
+    }
+
     function tornaMenu() {
         document.getElementById('live-section').style.display = 'none';
         document.getElementById('giochi-section').style.display = 'none';
@@ -1032,7 +1041,7 @@ function cambiaManche(nome) {
             }
         } 
         else if (tipo === "🏆 Biathlon") {
-            head.innerHTML = `<tr><th>Rank</th><th>Pett</th><th>Binomio / Club</th><th>B1</th><th>B2</th><th>SCORE TOTALE</th></tr>`;
+            head.innerHTML = `<tr><th>Rank</th><th style="text-align:center;">Pett</th><th>Binomio / Club</th><th style="text-align:center;">B1</th><th style="text-align:center;">B2</th><th style="text-align:center;">SCORE TOTALE</th></tr>`;
             let atletiGara = appData.iscritti.filter(b => {
                 if (String(b.pett).startsWith("EXT-") || String(b.pett).startsWith("???-")) return false;
                 let catEff = getCategoriaEffettiva(b, cls);
@@ -1044,17 +1053,30 @@ function cambiaManche(nome) {
                 let b2 = getTimePlusFaults('Biathlon B2 (Jumping)', c.pett, cls);
                 let strB1 = !b1.hasRun ? "" : (b1.isOut ? ((b1.esito === 'A' || b1.esito === 'ABS') ? "ASS" : "ELIM") : b1.val.toFixed(3).replace('.',','));
                 let strB2 = !b2.hasRun ? "" : (b2.isOut ? ((b2.esito === 'A' || b2.esito === 'ABS') ? "ASS" : "ELIM") : b2.val.toFixed(3).replace('.',','));
-                let runsCount = (b1.hasRun ? 1 : 0) + (b2.hasRun ? 1 : 0);
-                let pTot = 0, text = "";
-                if (runsCount === 2) { pTot = b1.val + b2.val; text = pTot.toFixed(3).replace('.',','); } 
-                else if (b1.hasRun) { pTot = b1.val; text = pTot.toFixed(3).replace('.',','); } 
-                else if (b2.hasRun) { pTot = b2.val; text = pTot.toFixed(3).replace('.',','); } 
-                else { pTot = 999999; }
-                return { ...c, strB1: strB1, strB2: strB2, text: text, pTot: pTot, runsCount: runsCount };
+                let hasRunB1 = b1.hasRun; let hasRunB2 = b2.hasRun;
+                let isElimB1 = b1.isOut; let isElimB2 = b2.isOut;
+                
+                let pTot = 999999;
+                let text = "";
+                let isCombinataValida = (hasRunB1 && !isElimB1 && hasRunB2 && !isElimB2);
+                
+                if (isCombinataValida) {
+                    pTot = b1.val + b2.val;
+                    text = pTot.toFixed(3).replace('.', ',');
+                } else if (hasRunB1 || hasRunB2) {
+                    text = "ELIM";
+                }
+                
+                let runsCount = isCombinataValida ? 2 : (hasRunB1 || hasRunB2 ? 1 : 0);
+                
+                return { ...c, strB1: strB1, strB2: strB2, text: text, pTot: pTot, runsCount: runsCount, isValid: isCombinataValida };
             }).sort((a,b) => {
-                if (b.runsCount !== a.runsCount) return b.runsCount - a.runsCount;
-                if (a.runsCount === 0) return 0;
-                return a.pTot - b.pTot;
+                if (a.isValid && !b.isValid) return -1;
+                if (!a.isValid && b.isValid) return 1;
+                if (a.isValid && b.isValid) return a.pTot - b.pTot;
+                if (a.runsCount > 0 && b.runsCount === 0) return -1;
+                if (a.runsCount === 0 && b.runsCount > 0) return 1;
+                return 0;
             });
 
             if (cl.length === 0) {
@@ -1063,7 +1085,7 @@ function cambiaManche(nome) {
                 let rankCounter = 1;
                 cl.forEach(r => {
                     let wildBadge = (cls === "Senior" && r.classe === "Junior") ? `<span class="badge-wildcard">J-FINALISSIMA</span>` : "";
-                    let rankDisplay = r.runsCount > 0 ? rankCounter++ : "";
+                    let rankDisplay = r.isValid ? rankCounter++ : "";
                     if (cls === "Junior" && r.runsCount === 2 && r.strB1 !== "ELIM" && r.strB1 !== "ASS" && r.strB2 !== "ELIM" && r.strB2 !== "ASS" && rankDisplay !== "" && rankDisplay <= 3) {
                         wildBadge += ` <span class="badge-wildcard" style="background:var(--success); color:white;">🌟 TOP 3 WILDCARD</span>`;
                     }

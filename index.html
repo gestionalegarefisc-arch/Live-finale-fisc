@@ -933,23 +933,17 @@ function cambiaManche(nome) {
         let premiabile = (chiusoEntrambiGiri && qualDueGiri.testo !== "N.C.");
         
         let pCamp = 0;
-        if (appData.puntiCampionato && Array.isArray(appData.puntiCampionato)) {
+        if (appData.puntiCampionato) {
+            let ptsArr = Array.isArray(appData.puntiCampionato) ? appData.puntiCampionato : (typeof appData.puntiCampionato === 'object' ? Object.keys(appData.puntiCampionato).map(k => { let parts = k.split("_"); return {cond: parts[0]||k, cane: parts[1]||"", punti: parseFloat(appData.puntiCampionato[k])||0}; }) : []);
             let cFull = pulisciNomeJS(c.conduttore); let dFull = pulisciNomeJS(c.cane);
             let cWords = parolePuliteJS(c.conduttore); let dWords = parolePuliteJS(c.cane);
-            let catOrig = (c.cat || "").toLowerCase();
-            let catEff = getCategoriaEffettiva(c, cls).toLowerCase();
             
             let bestMatch = null;
             let bestScore = -1;
             
-            appData.puntiCampionato.forEach(p => {
+            ptsArr.forEach(p => {
                 let csvCondFull = pulisciNomeJS(p.cond), csvCaneFull = pulisciNomeJS(p.cane);
                 let csvCondWords = parolePuliteJS(p.cond), csvCaneWords = parolePuliteJS(p.cane);
-                let csvCls = (p.categoria || "").toString().trim().toLowerCase();
-                let csvAlt = (p.altezza || "").toString().trim().toLowerCase();
-                
-                if (csvCls && csvCls !== cls.toLowerCase()) return;
-                if (csvAlt && csvAlt !== catOrig && csvAlt !== catEff) return;
                 
                 let condMatch = (cFull === csvCondFull) || (cWords.length > 0 && cWords.every(w => csvCondWords.includes(w))) || (csvCondWords.length > 0 && csvCondWords.every(w => cWords.includes(w)));
                 if (!condMatch) return;
@@ -1109,13 +1103,16 @@ function cambiaManche(nome) {
                     else if (rankDisplay===2) rankClass += " rank-2";
                     else if (rankDisplay===3) rankClass += " rank-3";
                     
-                    tbody.innerHTML += `<tr>
-                        <td>${rankDisplay ? `<div class="${rankClass}">${rankDisplay}</div>` : "-"}</td>
-                        <td><b style="font-size:18px;">${r.pett}</b></td>
+                    let bgRow = !r.isValid ? "background-color: #fff5f5;" : "";
+                    let displayRankUI = r.isValid ? `<div class="${rankClass}">${rankDisplay}</div>` : `<div class="rank-badge" style="background:transparent; color:#dc3545;">-</div>`;
+                    
+                    tbody.innerHTML += `<tr style="${bgRow}">
+                        <td align="center">${displayRankUI}</td>
+                        <td align="center"><b style="font-size:18px;">${r.pett}</b></td>
                         <td><b style="font-size:17px; color:var(--primary);">${r.conduttore} - ${r.cane}</b> ${wildBadge}${badgePara}${badgeVet}<br><small style="color:#6c757d;">${r.club || ''}</small></td>
-                        <td><b style="font-size:16px;">${r.strB1}</b></td>
-                        <td><b style="font-size:16px;">${r.strB2}</b></td>
-                        <td><b style="font-size:22px; color:var(--primary);">${r.text}</b></td>
+                        <td align="center"><b style="font-size:16px;">${r.strB1}</b></td>
+                        <td align="center"><b style="font-size:16px;">${r.strB2}</b></td>
+                        <td align="center"><b style="font-size:22px; ${r.isValid ? 'color:var(--primary);' : 'color:var(--danger);'}">${r.text}</b></td>
                     </tr>`;
                 });
             }

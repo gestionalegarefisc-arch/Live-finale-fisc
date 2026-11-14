@@ -603,7 +603,7 @@ function cambiaManche(nome) {
         return v;
     }
 
-    function creaRigaTabellaHTML(item, rankNum, isGame, cls) {
+    function creaRigaTabellaHTML(item, rankNum, isGame, cls, manche = "") {
         let c = item.caneOrig;
         let d = item.datiCorsa;
         
@@ -647,18 +647,19 @@ function cambiaManche(nome) {
             let rif = (item.hasT && !item.isOut) ? (d.rif || "0") : "-";
             let scoreColor = item.isOut ? "var(--danger)" : "var(--primary)";
             
-            let qualHtml = `<span style="color:#6c757d; font-weight: bold;">-</span>`;
-            if (item.hasT || item.isOut) {
-                let q = getQualificaTesto(item.scoreF, item.isOut ? item.textRisultato : "");
-                qualHtml = `<span style="background:${q.bg}; color:${q.colore}; padding: 5px 10px; border-radius: 6px; font-weight: bold; font-size:12px; box-shadow:0 2px 4px rgba(0,0,0,0.1);">${q.testo}</span>`;
-            }
-
             tr += `
                 <td style="font-size:16px; font-weight:bold;">${err}</td>
                 <td style="font-size:16px; font-weight:bold;">${rif}</td>
                 <td style="font-size:20px; font-weight:900; color:${scoreColor};">${item.textRisultato}</td>
-                <td>${qualHtml}</td>
             `;
+            if (!manche.includes("Biathlon")) {
+                let qualHtml = `<span style="color:#6c757d; font-weight: bold;">-</span>`;
+                if (item.hasT || item.isOut) {
+                    let q = getQualificaTesto(item.scoreF, item.isOut ? item.textRisultato : "");
+                    qualHtml = `<span style="background:${q.bg}; color:${q.colore}; padding: 5px 10px; border-radius: 6px; font-weight: bold; font-size:12px; box-shadow:0 2px 4px rgba(0,0,0,0.1);">${q.testo}</span>`;
+                }
+                tr += `<td>${qualHtml}</td>`;
+            }
         }
         
         tr += `</tr>`;
@@ -674,6 +675,8 @@ function cambiaManche(nome) {
         
         if (isGame) {
             head.innerHTML = `<tr><th>Rank</th><th width="55" style="text-align:center;">Ord.</th><th>Pett</th><th>Binomio / Club</th><th>Tempo</th><th>Score Punti</th><th>Esito</th></tr>`;
+        } else if (manche.includes("Biathlon")) {
+            head.innerHTML = `<tr><th>Rank</th><th width="55" style="text-align:center;">Ord.</th><th>Pett</th><th>Binomio / Club</th><th>Tempo</th><th>Err</th><th>Rif</th><th>Pen. Totali</th></tr>`;
         } else {
             head.innerHTML = `<tr><th>Rank</th><th width="55" style="text-align:center;">Ord.</th><th>Pett</th><th>Binomio / Club</th><th>Tempo</th><th>Err</th><th>Rif</th><th>Pen. Totali</th><th>Qual.</th></tr>`;
         }
@@ -881,7 +884,7 @@ function cambiaManche(nome) {
                 if (cGrp.length > 0) {
                     htmlOut += `<tr style="background:#e2d9f3;"><td colspan="9" style="font-weight:900; color:#4a2b82; font-size:15px; padding:10px 15px;">🏆 CLASSIFICA ${grp.toUpperCase()} — ALTEZZA: ${alt.toUpperCase()}</td></tr>`;
                     cGrp.forEach((item, idx) => {
-                        htmlOut += creaRigaTabellaHTML(item, idx + 1, isGame, cls);
+                        htmlOut += creaRigaTabellaHTML(item, idx + 1, isGame, cls, manche);
                     });
                 }
             });
@@ -889,7 +892,7 @@ function cambiaManche(nome) {
             if (inAttesa.length > 0) {
                 htmlOut += `<tr style="background:#e9ecef;"><td colspan="9" style="font-weight:900; color:#495057; font-size:14px; padding:10px 15px;">⏳ ORDINE DI PARTENZA UNIFICATO — ALTEZZA: ${alt.toUpperCase()} (Tutti i Gruppi)</td></tr>`;
                 inAttesa.forEach((item, idx) => {
-                    htmlOut += creaRigaTabellaHTML(item, idx + 1, isGame, cls);
+                    htmlOut += creaRigaTabellaHTML(item, idx + 1, isGame, cls, manche);
                 });
             }
             tbody.innerHTML = htmlOut;
@@ -897,7 +900,7 @@ function cambiaManche(nome) {
             listaElaborata.sort(sortFn);
             let htmlOut = "";
             listaElaborata.forEach((item, index) => {
-                htmlOut += creaRigaTabellaHTML(item, index + 1, isGame, cls);
+                htmlOut += creaRigaTabellaHTML(item, index + 1, isGame, cls, manche);
             });
             tbody.innerHTML = htmlOut;
         }

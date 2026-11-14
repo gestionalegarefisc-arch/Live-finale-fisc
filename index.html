@@ -761,6 +761,7 @@ function cambiaManche(nome) {
         // GARE STANDARD E PARAGILITY
         else {
             atletiGara = appData.iscritti.filter(b => {
+                if (String(b.pett).startsWith("EXT-") || String(b.pett).startsWith("???-")) return false;
                 let catEff = getCategoriaEffettiva(b, cls);
                 let matchesAlt = String(catEff).trim() === String(alt).trim();
                 
@@ -991,6 +992,7 @@ function cambiaManche(nome) {
         if (tipo === "🏆 All-Around") {
             head.innerHTML = `<tr><th>Rank</th><th>Pett</th><th>Binomio / Club</th><th>P. Gara</th><th>P. Campionato</th><th>TOTAL SCORE</th></tr>`;
             let atletiGara = appData.iscritti.filter(b => {
+                if (String(b.pett).startsWith("EXT-") || String(b.pett).startsWith("???-")) return false;
                 let catEff = getCategoriaEffettiva(b, cls);
                 let matchesAlt = String(catEff).trim() === String(alt).trim();
                 let matchesClass = String(b.classe).trim() === String(cls).trim();
@@ -1032,6 +1034,7 @@ function cambiaManche(nome) {
         else if (tipo === "🏆 Biathlon") {
             head.innerHTML = `<tr><th>Rank</th><th>Pett</th><th>Binomio / Club</th><th>B1</th><th>B2</th><th>SCORE TOTALE</th></tr>`;
             let atletiGara = appData.iscritti.filter(b => {
+                if (String(b.pett).startsWith("EXT-") || String(b.pett).startsWith("???-")) return false;
                 let catEff = getCategoriaEffettiva(b, cls);
                 return String(catEff).trim() === String(alt).trim() && (String(b.classe).trim() === String(cls).trim() || (cls === "Senior" && String(b.classe).trim() === "Junior" && appData.wildcards && appData.wildcards.includes(String(b.pett))));
             });

@@ -827,7 +827,7 @@ function cambiaManche(nome) {
             let floatT = parseFloat(formattaTempo(d.tempo).replace(',','.')) || 0;
             let hasT = (floatT > 0);
             let isOut = ['E','A','DIS','ABS'].includes(d.esito);
-            let ordStart = (c.ordini && c.ordini[manche]) ? (parseInt(c.ordini[manche]) || 999) : 999;
+            let ordStart = atletiGara.findIndex(x => String(x.pett) === String(c.pett)) + 1;
             
             let scoreF = 0; let testoRisultato = "-";
             

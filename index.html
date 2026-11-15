@@ -686,20 +686,30 @@ function cambiaManche(nome) {
         
         // SEZIONE TRIATHLON (T3 STAFFETTA A SQUADRE ESPLOSA IDENTICA AL GESTIONALE)
         if (manche === "Triathlon T3" && appData.squadre) {
-            head.innerHTML = `<tr><th width="50">Rank</th><th width="55" style="text-align:center;">Ord.</th><th>Squadra</th><th>Binomio</th><th width="100">Tempo</th><th width="80">Err</th><th width="80">Rif</th><th width="100">E/A</th></tr>`;
+            head.innerHTML = `<tr><th width="50">Rank</th><th width="55" style="text-align:center;">Ord.</th><th>Squadra</th><th>Binomio</th><th width="100">Tempo (Squadra)</th><th width="80">Err</th><th width="80">Rif</th><th width="100">E/A</th></tr>`;
             let filteredTeams = [...appData.squadre].filter(sq => divSel === "TUTTE" || sq.divisione === divSel);
             
             let teamScores = filteredTeams.map(sq => {
-                let penT3 = 0, completi = 0;
-                sq.membri.forEach(m => {
-                    let d = appData.risultati[manche] && appData.risultati[manche][m.pett] ? appData.risultati[manche][m.pett] : {};
-                    if (d.tempo || ['E','A','DIS','ABS'].includes(d.esito)) {
-                        penT3 += getTimePlusFaults(manche, m.pett, "Senior").val;
-                        completi++;
-                    } else {
-                        penT3 += 100;
-                    }
-                });
+                let penT3 = 0;
+                let m1 = sq.membri[0];
+                let d1 = appData.risultati[manche] && appData.risultati[manche][m1.pett] ? appData.risultati[manche][m1.pett] : {};
+                let tSquadra = parseFloat(formattaTempo(d1.tempo).replace(',','.')) || 0;
+                let p_dati = (appData.percorsi[manche] && appData.percorsi[manche]["Senior"] && appData.percorsi[manche]["Senior"]["Medium"]) ? appData.percorsi[manche]["Senior"]["Medium"] : {};
+                let tpsC = parseFloat((p_dati.tps || "45").replace(',', '.')) || 45.00;
+                let timePen = (tSquadra > 0 && tSquadra > tpsC) ? (tSquadra - tpsC) : 0;
+                
+                let isCompleted = (tSquadra > 0 || ['E','A','DIS','ABS'].includes(d1.esito));
+                if (isCompleted) {
+                    penT3 += tSquadra + timePen;
+                    sq.membri.forEach(m => {
+                        let d = appData.risultati[manche] && appData.risultati[manche][m.pett] ? appData.risultati[manche][m.pett] : {};
+                        if (['E','A','DIS','ABS'].includes(d.esito)) penT3 += 100;
+                        else penT3 += ((parseInt(d.err)||0)*5) + ((parseInt(d.rif)||0)*5);
+                    });
+                } else {
+                    penT3 = 300;
+                }
+                
                 let ord = 999;
                 for (let k = 0; k < sq.membri.length; k++) {
                     let c = appData.iscritti.find(x => String(x.pett) === String(sq.membri[k].pett));
@@ -708,7 +718,7 @@ function cambiaManche(nome) {
                         break;
                     }
                 }
-                return { sq: sq, score: penT3, completato: completi === 3, ord: ord };
+                return { sq: sq, score: penT3, completato: isCompleted, ord: ord, tSquadra: tSquadra };
             });
 
             // Ordine delle righe in tabella: rigorosamente per Ordine di Partenza come nel Gestionale!
@@ -743,6 +753,10 @@ function cambiaManche(nome) {
                         <div style="background:#d1e7dd; padding:5px 8px; margin-top:5px; border-radius:4px; font-weight:bold;">Tot: <span style="font-size:18px;">${scoreText}</span></div>
                     </td>`;
                 
+                let m1 = sq.membri[0];
+                let d1 = appData.risultati[manche] && appData.risultati[manche][m1.pett] ? appData.risultati[manche][m1.pett] : {tempo:""};
+                let tempoSqText = (ts.tSquadra > 0) ? formattaTempo(d1.tempo) : "-";
+
                 sq.membri.forEach((m, i) => {
                     let c = appData.iscritti.find(x => String(x.pett) === String(m.pett)) || { pett: m.pett, conduttore: "Sconosciuto", cane: "Eliminato", ordini: {} };
                     let d = appData.risultati[manche] && appData.risultati[manche][m.pett] ? appData.risultati[manche][m.pett] : {tempo:"", err:"", rif:"", esito:""};
@@ -751,8 +765,13 @@ function cambiaManche(nome) {
                     let esitoStr = isE ? "E" : (isA ? "A" : "-");
                     let colorTxt = (isE || isA) ? "color:#dc3545;" : "";
                     
+                    let timeInput = "";
+                    if (i === 0) {
+                        timeInput = `<td rowspan="3" style="vertical-align:middle; text-align:center;"><b style="font-size:18px;">${tempoSqText}</b></td>`;
+                    }
+                    
                     let row = `<td style="${colorTxt}"><b>[${c.pett}] ${c.conduttore} - ${c.cane}</b></td>
-                               <td><b>${formattaTempo(d.tempo) || "-"}</b></td>
+                               ${timeInput}
                                <td><b>${d.err !== undefined && d.err !== "" ? d.err : "-"}</b></td>
                                <td><b>${d.rif !== undefined && d.rif !== "" ? d.rif : "-"}</b></td>
                                <td><b style="${isE||isA ? 'color:#dc3545;':''}">${esitoStr}</b></td></tr>`;
@@ -763,7 +782,6 @@ function cambiaManche(nome) {
             tbody.innerHTML = htmlAll;
             return;
         }
-        
         // SEZIONE TRIATHLON (T1 / T2)
         else if (manche.startsWith("Triathlon") && appData.squadre) {
             appData.squadre.forEach(sq => {
@@ -839,11 +857,11 @@ function cambiaManche(nome) {
                     testoRisultato = scoreF.toString();
                 } else if (isBiathlon || isTria) {
                     let timePen = (!isTria && floatT > tpsC) ? (floatT - tpsC) : 0;
-                    scoreF = floatT + ((parseInt(d.err)||0)*5) + ((parseInt(d.rif)||0)*5) + timePen;
+                    scoreF = floatT + ((parseFloat(d.err)||0)*5) + ((parseFloat(d.rif)||0)*5) + timePen;
                     testoRisultato = scoreF.toFixed(3).replace('.', ',');
                 } else {
                     let timePen = floatT > tpsC ? (floatT - tpsC) : 0;
-                    scoreF = ((parseInt(d.err)||0)*5) + ((parseInt(d.rif)||0)*5) + timePen;
+                    scoreF = ((parseFloat(d.err)||0)*5) + ((parseFloat(d.rif)||0)*5) + timePen;
                     testoRisultato = scoreF.toFixed(3).replace('.', ',');
                 }
             }
@@ -933,15 +951,16 @@ function cambiaManche(nome) {
         let premiabile = (chiusoEntrambiGiri && qualDueGiri.testo !== "N.C.");
         
         let pCamp = 0;
-        if (appData.puntiCampionato) {
-            let ptsArr = Array.isArray(appData.puntiCampionato) ? appData.puntiCampionato : (typeof appData.puntiCampionato === 'object' ? Object.keys(appData.puntiCampionato).map(k => { let parts = k.split("_"); return {cond: parts[0]||k, cane: parts[1]||"", punti: parseFloat(appData.puntiCampionato[k])||0}; }) : []);
+        if (appData.puntiCampionato && Array.isArray(appData.puntiCampionato)) {
             let cFull = pulisciNomeJS(c.conduttore); let dFull = pulisciNomeJS(c.cane);
             let cWords = parolePuliteJS(c.conduttore); let dWords = parolePuliteJS(c.cane);
+            let catOrig = (c.cat || "").toLowerCase();
+            let catEff = getCategoriaEffettiva(c, cls).toLowerCase();
             
             let bestMatch = null;
             let bestScore = -1;
             
-            ptsArr.forEach(p => {
+            appData.puntiCampionato.forEach(p => {
                 let csvCondFull = pulisciNomeJS(p.cond), csvCaneFull = pulisciNomeJS(p.cane);
                 let csvCondWords = parolePuliteJS(p.cond), csvCaneWords = parolePuliteJS(p.cane);
                 
@@ -1103,16 +1122,13 @@ function cambiaManche(nome) {
                     else if (rankDisplay===2) rankClass += " rank-2";
                     else if (rankDisplay===3) rankClass += " rank-3";
                     
-                    let bgRow = !r.isValid ? "background-color: #fff5f5;" : "";
-                    let displayRankUI = r.isValid ? `<div class="${rankClass}">${rankDisplay}</div>` : `<div class="rank-badge" style="background:transparent; color:#dc3545;">-</div>`;
-                    
-                    tbody.innerHTML += `<tr style="${bgRow}">
-                        <td align="center">${displayRankUI}</td>
-                        <td align="center"><b style="font-size:18px;">${r.pett}</b></td>
+                    tbody.innerHTML += `<tr>
+                        <td>${rankDisplay ? `<div class="${rankClass}">${rankDisplay}</div>` : "-"}</td>
+                        <td><b style="font-size:18px;">${r.pett}</b></td>
                         <td><b style="font-size:17px; color:var(--primary);">${r.conduttore} - ${r.cane}</b> ${wildBadge}${badgePara}${badgeVet}<br><small style="color:#6c757d;">${r.club || ''}</small></td>
-                        <td align="center"><b style="font-size:16px;">${r.strB1}</b></td>
-                        <td align="center"><b style="font-size:16px;">${r.strB2}</b></td>
-                        <td align="center"><b style="font-size:22px; ${r.isValid ? 'color:var(--primary);' : 'color:var(--danger);'}">${r.text}</b></td>
+                        <td><b style="font-size:16px;">${r.strB1}</b></td>
+                        <td><b style="font-size:16px;">${r.strB2}</b></td>
+                        <td><b style="font-size:22px; color:var(--primary);">${r.text}</b></td>
                     </tr>`;
                 });
             }
@@ -1125,24 +1141,40 @@ function cambiaManche(nome) {
                 return;
             }
             
+            let manche = 'Triathlon T3';
             let filteredTeams = appData.squadre.filter(sq => divSel === "TUTTE" || sq.divisione === divSel);
             let cl = filteredTeams.map(sq => {
-                let t = 0, cc = 0;
-                sq.membri.forEach(m => {
-                    let d = appData.risultati['Triathlon T3'] && appData.risultati['Triathlon T3'][m.pett] ? appData.risultati['Triathlon T3'][m.pett] : null;
-                    if (d && (d.tempo || ['E','A','DIS','ABS'].includes(d.esito))) {
-                        t += getTimePlusFaults('Triathlon T3', m.pett, "Senior").val;
-                        cc++;
-                    } else { t += 100; }
-                });
+                let t = 0;
+                
+                let m1 = sq.membri[0];
+                let d1 = appData.risultati[manche] && appData.risultati[manche][m1.pett] ? appData.risultati[manche][m1.pett] : {};
+                let tSquadra = parseFloat(formattaTempo(d1.tempo).replace(',','.')) || 0;
+                let p_dati = (appData.percorsi[manche] && appData.percorsi[manche]["Senior"] && appData.percorsi[manche]["Senior"]["Medium"]) ? appData.percorsi[manche]["Senior"]["Medium"] : {};
+                let tpsC = parseFloat((p_dati.tps || "45").replace(',', '.')) || 45.00;
+                let timePen = (tSquadra > 0 && tSquadra > tpsC) ? (tSquadra - tpsC) : 0;
+                
+                let isCompleted = (tSquadra > 0 || ['E','A','DIS','ABS'].includes(d1.esito));
+                
+                if (isCompleted) {
+                    t += tSquadra + timePen;
+                    sq.membri.forEach(m => {
+                        let d = appData.risultati['Triathlon T3'] && appData.risultati['Triathlon T3'][m.pett] ? appData.risultati['Triathlon T3'][m.pett] : null;
+                        if (d && (d.tempo || ['E','A','DIS','ABS'].includes(d.esito))) {
+                            if (['E','A','DIS','ABS'].includes(d.esito)) t += 100;
+                            else t += ((parseInt(d.err)||0)*5) + ((parseInt(d.rif)||0)*5);
+                        } else t += 100;
+                    });
+                } else {
+                    t += 300;
+                }
+                
                 let roaster = [];
                 sq.membri.concat(sq.storico || []).forEach(m => {
                     let c = appData.iscritti.find(x => String(x.pett) === String(m.pett));
                     if (c) roaster.push(c.conduttore);
                 });
-                return { ...sq, scoreF: t, roaster: roaster.join(", "), comp: cc === 3 };
+                return { ...sq, scoreF: t, roaster: roaster.join(", "), comp: isCompleted };
             });
-            
             let htmlOut = "";
             let divDaMostrare = divSel === "TUTTE" ? ["Small", "Large"] : [divSel];
             divDaMostrare.forEach(div => {
